@@ -25,13 +25,16 @@ TABLES.forEach(t => (S[t] = []));
 const NAME = w => S.members.find(m => m.who === w)?.name || (w === 'p' ? 'Püßmaus' : 'Müßmaus');
 const other = () => (S.me === 'p' ? 'm' : 'p');
 
-function toast(msg, ms = 2200) {
+// Anzeigedauern (ms) – an einer Stelle anpassbar. Alles lässt sich auch per Antippen schließen.
+const DUR = { toast: 4500, important: 6500, praise: 8000, push: 30000 };
+$('#toast').addEventListener('click', () => $('#toast').classList.remove('show'));
+function toast(msg, ms = DUR.toast) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms);
 }
 async function act(fn) {
   try { return await fn(); }
-  catch (e) { console.error(e); toast('Hoppla: ' + (e.message || 'Da ist was schiefgelaufen'), 3500); }
+  catch (e) { console.error(e); toast('Hoppla: ' + (e.message || 'Da ist was schiefgelaufen'), DUR.important); }
 }
 function crumbs(el) {
   const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top;
@@ -52,7 +55,7 @@ function sheet({ title, fields, values = {}, saveLabel = 'Speichern', onSave, on
   const f = fd => {
     const v = values[fd.k] ?? fd.def ?? '';
     const id = 'sf-' + fd.k;
-    if (fd.type === 'checkbox') return `<div class="field check"><input type="checkbox" id="${id}" name="${fd.k}" ${v ? 'checked' : ''}><label for="${id}">${fd.label}</label></div>`;
+    if (fd.type === 'checkbox') return `<div class="field cb"><input type="checkbox" id="${id}" name="${fd.k}" ${v ? 'checked' : ''}><label for="${id}">${fd.label}</label></div>`;
     if (fd.type === 'select') return `<div class="field"><label for="${id}">${fd.label}</label><select id="${id}" name="${fd.k}">${fd.options.map(([ov, ol]) => `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`).join('')}</select></div>`;
     if (fd.type === 'textarea') return `<div class="field"><label for="${id}">${fd.label}</label><textarea id="${id}" name="${fd.k}" placeholder="${esc(fd.ph || '')}">${esc(v)}</textarea></div>`;
     return `<div class="field"><label for="${id}">${fd.label}</label><input id="${id}" name="${fd.k}" type="${fd.type || 'text'}" value="${esc(v)}" ${fd.req ? 'required' : ''} ${fd.type === 'number' ? 'inputmode="decimal" step="any" min="0"' : ''} placeholder="${esc(fd.ph || '')}" ${fd.max ? `maxlength="${fd.max}"` : ''}></div>`;
@@ -116,7 +119,7 @@ function onChange(t, p) {
   }
   if (p.eventType === 'UPDATE' && l.thanked && l.by_who === S.me && !seenThanks.has(l.id)) {
     seenThanks.add(l.id);
-    toast(`💛 ${NAME(other())} hat dir eine Danke-Pfote geschickt!`, 3000);
+    toast(`💛 ${NAME(other())} hat dir eine Danke-Pfote geschickt!`, DUR.important);
   }
 }
 
@@ -342,7 +345,10 @@ function renderTasks() {
     return { p: sumPts('p', a, b), m: sumPts('m', a, b), ds: a.toLocaleDateString('sv-SE') };
   });
   const max = Math.max(20, ...per.map(x => x.p + x.m)), sc = 70 / max;
-  $('#week').innerHTML = per.map((x, i) => `<div class="c ${x.ds === td ? 'today' : ''}"><div class="stack" style="height:${Math.max(3, (x.p + x.m) * sc)}px"><i style="height:${x.m * sc}px;background:var(--mues)"></i><i style="height:${x.p * sc}px;background:var(--pues)"></i></div><span>${DAYS[i]}</span></div>`).join('');
+  if (!per.some(x => x.ds === selDay)) selDay = td;
+  $('#week').innerHTML = per.map((x, i) => `<div class="c ${x.ds === td ? 'today' : ''} ${x.ds === selDay ? 'sel' : ''}" data-day="${x.ds}" role="button" tabindex="0" aria-label="${DAYS[i]}: erledigte Aufgaben anzeigen"><div class="stack" style="height:${Math.max(3, (x.p + x.m) * sc)}px"><i style="height:${x.m * sc}px;background:var(--mues)"></i><i style="height:${x.p * sc}px;background:var(--pues)"></i></div><span>${DAYS[i]}</span></div>`).join('');
+
+  renderDayDetail();
 
   const list = openTasks().filter(t =>
     tFilter === 'all' || (tFilter === 'due' && t.due <= td) || (tFilter === 'me' && (t.assignee === S.me || t.assignee === 'b')) || (tFilter === 'quick' && t.minutes <= 5));
@@ -350,6 +356,25 @@ function renderTasks() {
   $('#tasks').innerHTML = (list.map(taskRow).join('') || `<p class="empty">${tFilter === 'due' ? 'Nichts fällig. Mäuschenstill! 😴' : 'Keine Aufgaben hier.'}</p>`)
     + (overdue && tFilter === 'due' ? `<p class="small muted" style="padding:8px 4px">${pick(OVERDUE)}</p>` : '');
 }
+// Käse pro Tag: angetippter Tag zeigt, was erledigt wurde
+let selDay = today();
+function renderDayDetail() {
+  const logs = pointLogs().filter(l => dayOf(l.done_at) === selDay).sort((a, b) => a.done_at.localeCompare(b.done_at));
+  const total = logs.reduce((a, l) => a + l.points, 0);
+  const label = selDay === today() ? 'Heute' : parseDay(selDay).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'short' });
+  const time = iso => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  $('#day-detail').innerHTML = `<h4>${label}<span>${total ? `+${total} 🧀` : ''}</span></h4>`
+    + (logs.map(l => `<div class="log"><span class="av ${l.by_who}">${l.by_who === 'p' ? 'P' : 'M'}</span><div class="t"><b>${l.kind === 'bonus' ? '💛 ' : ''}${esc(l.task_name)}</b></div><time>${time(l.done_at)}</time><span class="pts">+${l.points}</span></div>`).join('')
+      || `<p class="empty">${selDay > today() ? 'Dieser Tag kommt erst noch. 🐭' : 'An diesem Tag war Mäuschenstille. 😴'}</p>`);
+}
+$('#week').addEventListener('click', e => {
+  const c = e.target.closest('[data-day]'); if (!c) return;
+  selDay = c.dataset.day;
+  $$('#week .c').forEach(x => x.classList.toggle('sel', x === c));
+  renderDayDetail();
+});
+$('#week').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.target.closest('[data-day]')?.click(); } });
+
 $('#t-chips').onclick = e => {
   const c = e.target.closest('.chip'); if (!c) return; tFilter = c.dataset.f;
   $$('#t-chips .chip').forEach(x => x.classList.toggle('on', x === c)); renderTasks();
@@ -374,7 +399,7 @@ function praise(task, log) {
   $('#pr-t').textContent = fill(txt, task.name, NAME(S.me));
   $('#pr-p').textContent = `+${task.points} 🧀 fürs Wochenziel`;
   const p = $('#praise'); p.classList.add('show');
-  clearTimeout(prH); prH = setTimeout(() => p.classList.remove('show'), 3800);
+  clearTimeout(prH); prH = setTimeout(() => p.classList.remove('show'), DUR.praise);
   if (DEMO) { // Vorschau, was die andere Maus sieht
     clearTimeout(puH);
     puH = setTimeout(() => showPush(fill(pick(PARTNER), task.name, NAME(S.me)), log, `So sieht's bei ${NAME(other())} aus`), 1500);
@@ -397,7 +422,7 @@ function showPush(text, log, label) {
   $('#pu-t').textContent = text;
   $('#pu-label').hidden = !label; $('#pu-label').textContent = label || '';
   $('#push').classList.add('show');
-  clearTimeout(showPush._h); showPush._h = setTimeout(() => $('#push').classList.remove('show'), 12000);
+  clearTimeout(showPush._h); showPush._h = setTimeout(() => $('#push').classList.remove('show'), DUR.push);
 }
 $('#pu-x').onclick = () => $('#push').classList.remove('show');
 $('#pu-thx').onclick = async () => {
@@ -417,7 +442,7 @@ const TASK_FIELDS = [
   [{ k: 'assignee', label: 'Wer?', type: 'select', options: [['b', 'Beide'], ['p', 'Püßmaus'], ['m', 'Müßmaus']], def: 'b' },
    { k: 'repeat_days', label: 'Wiederholen', type: 'select', num: true, options: [['null', 'einmalig'], [1, 'täglich'], [2, 'alle 2 Tage'], [3, 'alle 3 Tage'], [4, 'alle 4 Tage'], [7, 'wöchentlich'], [14, 'alle 2 Wochen'], [30, 'monatlich']], def: 'null' }],
   { k: 'due', label: 'Nächstes Mal fällig', type: 'date' },
-  { k: 'heavy', label: '💪 Schwer oder mit Putzchemie (geht im Schwangerschaftsmodus an Püßmaus)', type: 'checkbox' },
+  { k: 'heavy', label: '💪 Schwer oder mit Putzchemie<small>Geht während der Schwangerschaft automatisch an Püßmaus</small>', type: 'checkbox' },
 ];
 const taskSave = vals => ({ ...vals, assignee: vals.heavy ? 'p' : vals.assignee, minutes: Math.round(vals.minutes) || 5 });
 $('#add-task').onclick = () => sheet({
@@ -474,7 +499,7 @@ $('#goal').onclick = async () => {
       const r = S.rewards.find(x => `${x.emoji} ${x.name}` === h.reward);
       if (r) await db.update('rewards', r.id, { redeemed_count: r.redeemed_count + 1 });
     });
-    toast('🎉 Eingelöst! Viel Spaß, ihr Mäuse!', 3000);
+    toast('🎉 Eingelöst! Viel Spaß, ihr Mäuse!', DUR.important);
     return;
   }
   showView('aufgaben');
