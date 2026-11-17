@@ -15,7 +15,7 @@ Baby kommt im Juni 2027. Sprache der App: Deutsch, verspielt mit Mäuse-Wortspie
 - `config.js` leer → Demo-Modus (localStorage, Püß/Müß umschaltbar). `?demo` in der URL erzwingt Demo.
 - `js/db.js` gleiche Schnittstelle für Supabase und Demo. `js/main.js` UI-Logik. `js/seed.js` Startdaten (werden beim Gründen eingefügt). `js/texts.js` Sprüche, Level, Gang-Erkennung.
 - DB-Schema: `supabase/schema.sql` (RLS über `my_household()`). Spätere Änderungen als neue Datei `supabase/NNN_*.sql`, nie das Ursprungsskript ändern.
-- Bei App-Änderungen `VERSION` in `app/sw.js` hochzählen.
+- Bei App-Änderungen `VERSION` in `app/sw.js` UND `APP_VERSION` in `app/js/main.js` hochzählen (Version steht unten im Mauseloch – hilft beim Prüfen, ob ein Handy aktuell ist). SW holt eigene Dateien mit `cache:'no-cache'` (GitHub Pages cached 10 Min.) und lädt bei neuer Version einmal automatisch neu.
 - Lokal testen: `powershell -File .claude/serve.ps1 -Root app -Port 5180` → http://localhost:5180
 - Kein Git installiert; Nutzer verwendet GitHub Desktop.
 

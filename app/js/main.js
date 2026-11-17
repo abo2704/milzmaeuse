@@ -831,7 +831,17 @@ function showView(v) {
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) showView(b.dataset.v); };
 
 /* ============ Los geht's ============ */
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+const APP_VERSION = 'v5'; // gleich halten mit VERSION in sw.js
+$('.foot').textContent = `Die Milzmäuse ${APP_VERSION} · mit 🧀 gebaut`;
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // Kommt eine neue Version, einmal automatisch neu laden, damit alte und neue Dateien nicht gemischt laufen
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !reloaded) { reloaded = true; location.reload(); }
+  });
+  navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
+}
 (async () => {
   try {
     db = await createDb();
