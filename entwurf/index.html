@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Die Milzmäuse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FBF7F2; --surface:#FFFFFF; --surface-2:#F6F0E8; --ink:#2B2730; --muted:#7A7380; --line:#EEE6DD;
+  --mouse:#8E8A96; --pink:#F4A7B9; --pink-strong:#E0718D; --pink-soft:#FDE8EE;
+  --cheese:#F7C948; --cheese-deep:#C99400; --cheese-soft:#FFF4CC;
+  --green:#2F9E6E; --green-soft:#E1F5EC; --red:#D9534F; --red-soft:#FBE4E3;
+  --pues:#6C8EEF; --pues-soft:#E6ECFD; --mues:#E0718D; --mues-soft:#FDE8EE;
+  --shadow:0 1px 2px rgba(43,39,48,.05),0 6px 20px rgba(43,39,48,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#18161C; --surface:#232028; --surface-2:#2C2832; --ink:#F3EFF5; --muted:#A9A2B0; --line:#36313D;
+    --pink-soft:#3D2630; --cheese-soft:#3A3220; --green-soft:#1D3229; --red-soft:#3A2224;
+    --pues-soft:#232C45; --mues-soft:#3D2630; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#18161C; --surface:#232028; --surface-2:#2C2832; --ink:#F3EFF5; --muted:#A9A2B0; --line:#36313D;
+  --pink-soft:#3D2630; --cheese-soft:#3A3220; --green-soft:#1D3229; --red-soft:#3A2224;
+  --pues-soft:#232C45; --mues-soft:#3D2630; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;display:flex;justify-content:center}
+.app{width:100%;max-width:440px;min-height:100vh;position:relative;padding:0 16px 96px;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit;color:inherit}
+
+/* header */
+.top{display:flex;align-items:center;gap:12px;padding:20px 0 8px}
+.logo{width:44px;height:44px;flex:none}
+.top h1{font-size:20px;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.top p{font-size:13px;color:var(--muted);font-weight:600}
+.who{margin-left:auto;display:flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
+.who button{font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;color:var(--muted)}
+.who button.on{background:var(--ink);color:var(--bg)}
+
+h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin:22px 4px 10px;display:flex;align-items:center;gap:6px}
+h2.sec .r{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:700}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+.card+.card{margin-top:10px}
+.row{display:flex;align-items:center;gap:10px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.tag.cheese{background:var(--cheese-soft);color:var(--cheese-deep)}
+.tag.green{background:var(--green-soft);color:var(--green)}
+.tag.red{background:var(--red-soft);color:var(--red)}
+.tag.pink{background:var(--pink-soft);color:var(--pink-strong)}
+.tag.pues{background:var(--pues-soft);color:var(--pues)}
+.tag.mues{background:var(--mues-soft);color:var(--mues)}
+
+/* goal */
+.goal{background:linear-gradient(135deg,#FFE58A 0%,#F7C948 55%,#F2B33D 100%);color:#3A2A00;border:0;position:relative;overflow:hidden}
+.goal .paws{position:absolute;right:-6px;top:-4px;opacity:.18;width:130px}
+.goal h3{font-size:22px;font-weight:900;letter-spacing:-.02em}
+.goal .sub{font-size:13px;font-weight:700;opacity:.8}
+.bar{height:14px;border-radius:999px;background:rgba(58,42,0,.12);overflow:hidden;display:flex;margin:14px 0 8px}
+.bar i{display:block;height:100%;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.bar .p{background:#3A2A00}
+.bar .m{background:#fff;opacity:.9}
+.legend{display:flex;gap:14px;font-size:12px;font-weight:800}
+.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.legend .lp::before{background:#3A2A00}.legend .lm::before{background:#fff}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px;text-align:center}
+.stat b{display:block;font-size:22px;font-weight:900;letter-spacing:-.02em}
+.stat span{font-size:11px;font-weight:700;color:var(--muted)}
+
+/* streak paws */
+.streak{display:flex;justify-content:space-between;margin-top:12px}
+.streak .d{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:800;color:var(--muted)}
+.streak svg{width:28px;height:28px}
+.streak .d.off svg{opacity:.18}
+.streak .d.today span{color:var(--ink)}
+
+/* tasks */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;font-size:13px;font-weight:800;padding:8px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.task{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.task:last-child{border-bottom:0}
+.check{width:30px;height:30px;flex:none;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;transition:all .2s}
+.check svg{width:16px;height:16px;opacity:0;transform:scale(.4);transition:all .25s cubic-bezier(.2,1.6,.4,1)}
+.done .check{background:var(--green);border-color:var(--green)}
+.done .check svg{opacity:1;transform:scale(1)}
+.task .t{flex:1;min-width:0}
+.task .t b{display:block;font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task .t small{font-size:12px;color:var(--muted);font-weight:600}
+.done .t b{text-decoration:line-through;color:var(--muted)}
+.pts{font-size:13px;font-weight:900;color:var(--cheese-deep);white-space:nowrap}
+.av{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:900;color:#fff}
+.av.p{background:var(--pues)}.av.m{background:var(--mues)}.av.b{background:linear-gradient(90deg,var(--pues) 50%,var(--mues) 50%)}
+
+.level{display:flex;align-items:center;gap:14px}
+.badge{width:56px;height:56px;border-radius:18px;background:var(--pink-soft);display:grid;place-items:center;flex:none}
+.badge svg{width:38px;height:38px}
+.xp{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin-top:8px}
+.xp i{display:block;height:100%;background:var(--pink-strong);border-radius:999px}
+
+.week{display:flex;align-items:flex-end;gap:8px;height:90px;margin-top:12px}
+.week .c{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.week .stack{width:100%;max-width:26px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:6px;overflow:hidden;gap:2px}
+.week .stack i{display:block;width:100%}
+.week .c span{font-size:11px;font-weight:800;color:var(--muted)}
+
+/* shopping */
+.add{display:flex;gap:8px}
+.add input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;font-weight:700;outline:none}
+.add input:focus{border-color:var(--pink-strong)}
+.add button{background:var(--ink);color:var(--bg);border-radius:14px;padding:0 16px;font-weight:900;font-size:20px}
+.store{display:flex;gap:6px;margin-top:10px}
+.item{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item .check{width:26px;height:26px;border-radius:9px}
+.item .n{flex:1;font-weight:800;font-size:15px}
+.item .q{font-size:13px;color:var(--muted);font-weight:700}
+.item.done .n{text-decoration:line-through;color:var(--muted)}
+.aisle{font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 4px 2px}
+
+/* food */
+.rings{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ring{display:flex;align-items:center;gap:10px}
+.ring svg{width:64px;height:64px;flex:none;transform:rotate(-90deg)}
+.ring b{font-size:16px;font-weight:900;display:block;white-space:nowrap}
+.ring svg{width:56px;height:56px}
+.meal{display:flex;gap:12px;align-items:center}
+.meal .day{width:44px;flex:none;text-align:center;font-weight:900;font-size:13px;color:var(--muted)}
+.meal .day b{display:block;font-size:20px;color:var(--ink)}
+.meal .info{flex:1;min-width:0}
+.meal .info b{font-size:15px;font-weight:800;display:block}
+.meal .tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:900;font-size:14px;padding:12px 16px;border-radius:14px;background:var(--ink);color:var(--bg);width:100%}
+.btn.soft{background:var(--surface-2);color:var(--ink)}
+
+/* more */
+.alert{display:flex;gap:12px;align-items:flex-start;border-color:transparent;background:var(--red-soft)}
+.alert .ico{font-size:26px;line-height:1}
+.alert b{font-weight:900}
+.contract{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.contract:last-child{border-bottom:0}
+.contract .ic{width:40px;height:40px;border-radius:12px;background:var(--surface-2);display:grid;place-items:center;font-size:20px;flex:none}
+.contract .t{flex:1;min-width:0}
+.contract .t b{display:block;font-weight:800}
+.contract .t small{color:var(--muted);font-size:12px;font-weight:600}
+.note{background:var(--cheese-soft);border:0;transform:rotate(-.6deg)}
+.note:nth-child(even){background:var(--pink-soft);transform:rotate(.5deg)}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.notes .card{margin:0}
+.notes b{font-weight:900;display:block;margin-bottom:4px}
+.baby{display:flex;flex-direction:column;gap:10px}
+.shoes{display:flex;gap:2px;flex-wrap:wrap}
+.shoes svg{width:17px;height:17px}
+
+/* segmented */
+.seg{display:flex;background:var(--surface-2);border-radius:14px;padding:4px;margin-top:16px}
+.seg button{flex:1;padding:9px 0;border-radius:10px;font-weight:900;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.pane{display:none}.pane.on{display:block}
+
+/* stock */
+.stock{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.stock:last-child{border-bottom:0}
+.stock .n{flex:1;min-width:0;font-weight:800;font-size:15px}
+.stock .n small{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.step{display:flex;align-items:center;background:var(--surface-2);border-radius:12px}
+.step button{width:32px;height:32px;font-size:18px;font-weight:900;color:var(--muted)}
+.step b{min-width:22px;text-align:center;font-size:15px;font-weight:900}
+.mini{font-size:16px;width:34px;height:34px;border-radius:10px;background:var(--cheese-soft);flex:none}
+.mini.in{background:var(--green-soft)}
+.cook{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.cook:last-child{border-bottom:0}
+.cook .e{font-size:28px}
+.cook .t{flex:1;min-width:0}
+.cook .t b{display:block;font-weight:800}
+.cook .t small{font-size:12px;color:var(--muted);font-weight:600}
+
+/* praise */
+.praise{position:fixed;left:50%;bottom:96px;transform:translate(-50%,30px) scale(.96);opacity:0;pointer-events:none;width:calc(100% - 32px);max-width:408px;z-index:40;transition:all .35s cubic-bezier(.2,1.3,.4,1);text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px 18px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.praise.show{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
+.praise .big{font-size:44px;line-height:1;margin-bottom:8px}
+.praise h4{font-size:20px;font-weight:900;letter-spacing:-.01em}
+.praise p{font-size:15px;font-weight:700;color:var(--muted);margin-top:6px;line-height:1.35}
+.praise .plus{display:inline-block;margin-top:12px;font-weight:900;color:var(--cheese-deep);background:var(--cheese-soft);padding:6px 12px;border-radius:999px}
+.push{position:fixed;left:50%;top:10px;transform:translate(-50%,-160%);width:calc(100% - 24px);max-width:416px;z-index:45;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:20px;padding:12px 14px;box-shadow:0 12px 34px rgba(0,0,0,.22);transition:transform .45s cubic-bezier(.2,1.3,.4,1)}
+.push.show{transform:translate(-50%,0)}
+.push .h{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--muted)}
+.push .h svg{width:20px;height:20px}
+.push p{font-size:14px;font-weight:700;margin-top:6px;line-height:1.35}
+.push .act{display:flex;gap:8px;margin-top:10px}
+.push .act button{flex:1;font-size:13px;font-weight:900;padding:8px;border-radius:12px;background:var(--surface-2)}
+.push .act button.pri{background:var(--pink-strong);color:#fff}
+.push .label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--pink-strong)}
+
+/* diary */
+.diary{position:relative;padding-left:22px}
+.diary::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--line);border-radius:2px}
+.entry{position:relative;margin-bottom:10px}
+.entry::before{content:"";position:absolute;left:-19px;top:20px;width:12px;height:12px;border-radius:50%;background:var(--pink);border:3px solid var(--bg)}
+.entry .card{padding:12px 14px}
+.entry .d{font-size:12px;font-weight:800;color:var(--muted)}
+.entry p{font-weight:700;margin-top:2px}
+.emo{display:flex;gap:6px;margin-top:8px}
+.emo button{font-size:20px;width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.emo button.on{border-color:var(--pink-strong);background:var(--pink-soft)}
+.memory{background:var(--pink-soft);border:0}
+
+/* nav */
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:10}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:800;color:var(--muted);padding:6px 0;border-radius:12px}
+nav button .i{font-size:20px;line-height:1;filter:grayscale(1);opacity:.6;transition:all .2s}
+nav button.on{color:var(--ink)}
+nav button.on .i{filter:none;opacity:1;transform:translateY(-2px) scale(1.1)}
+.view{display:none;animation:fade .25s ease}
+.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* toast + confetti */
+.toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-140%);background:var(--ink);color:var(--bg);font-weight:900;padding:12px 18px;border-radius:999px;box-shadow:var(--shadow);z-index:30;transition:transform .35s cubic-bezier(.2,1.4,.4,1);white-space:nowrap;font-size:15px;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+.toast.show{transform:translate(-50%,0)}
+.crumb{position:fixed;font-size:22px;pointer-events:none;z-index:25;animation:fly 1s ease-out forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+.demo{font-size:11px;text-align:center;color:var(--muted);margin-top:24px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SVG sprites -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="paw" viewBox="0 0 32 32">
+      <ellipse cx="16" cy="21" rx="7" ry="6" fill="currentColor"/>
+      <ellipse cx="7.5" cy="13" rx="3" ry="3.6" fill="currentColor"/>
+      <ellipse cx="13" cy="8.5" rx="3" ry="3.8" fill="currentColor"/>
+      <ellipse cx="19" cy="8.5" rx="3" ry="3.8" fill="currentColor"/>
+      <ellipse cx="24.5" cy="13" rx="3" ry="3.6" fill="currentColor"/>
+    </symbol>
+    <symbol id="shoe" viewBox="0 0 24 24">
+      <path d="M5 5h6v7c0 1 1 2 3 2.4l4 .8c2 .4 3 1.6 3 3.3V20H3.5C2.7 20 2 19.3 2 18.5V8c0-1.7 1.3-3 3-3z" fill="currentColor"/>
+      <path d="M2 17h19" stroke="var(--surface)" stroke-width="1.6"/>
+    </symbol>
+    <symbol id="mouse" viewBox="0 0 64 64">
+      <circle cx="16" cy="18" r="12" fill="#B8B3C0"/><circle cx="16" cy="18" r="7" fill="#F4A7B9"/>
+      <circle cx="48" cy="18" r="12" fill="#B8B3C0"/><circle cx="48" cy="18" r="7" fill="#F4A7B9"/>
+      <ellipse cx="32" cy="38" rx="20" ry="18" fill="#C9C5D0"/>
+      <circle cx="25" cy="35" r="2.6" fill="#2B2730"/><circle cx="39" cy="35" r="2.6" fill="#2B2730"/>
+      <circle cx="26" cy="34" r=".9" fill="#fff"/><circle cx="40" cy="34" r=".9" fill="#fff"/>
+      <ellipse cx="32" cy="43" rx="3.2" ry="2.4" fill="#E0718D"/>
+      <circle cx="21" cy="43" r="3" fill="#F4A7B9" opacity=".6"/><circle cx="43" cy="43" r="3" fill="#F4A7B9" opacity=".6"/>
+      <path d="M20 46l-9 1M20 48l-8 4M44 46l9 1M44 48l8 4" stroke="#8E8A96" stroke-width="1.2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <svg class="logo"><use href="#mouse"/></svg>
+  <div>
+    <h1>Die Milzmäuse</h1>
+    <p id="greet">Moin Püßmaus 🐾</p>
+  </div>
+  <div class="who" role="group" aria-label="Wer bist du?">
+    <button class="on" data-who="p">Püß</button>
+    <button data-who="m">Müß</button>
+  </div>
+</header>
+
+<!-- ============ HEUTE ============ -->
+<section class="view on" id="v-heute">
+  <h2 class="sec">Gemeinsames Wochenziel</h2>
+  <div class="card goal">
+    <svg class="paws" viewBox="0 0 120 120"><use href="#paw" x="0" y="50" width="34" height="34" color="#3A2A00" transform="rotate(-20 17 67)"/><use href="#paw" x="40" y="22" width="34" height="34" color="#3A2A00"/><use href="#paw" x="80" y="-4" width="34" height="34" color="#3A2A00" transform="rotate(15 97 13)"/></svg>
+    <div class="sub">Noch <span id="g-left">70</span> 🧀 bis zum Ziel</div>
+    <h3>🍕 Pizzaabend</h3>
+    <div class="bar"><i class="p" id="g-p"></i><i class="m" id="g-m"></i></div>
+    <div class="legend"><span class="lp">Püßmaus <b id="g-pv">95</b></span><span class="lm">Müßmaus <b id="g-mv">85</b></span><span style="margin-left:auto">/ 250 🧀</span></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>🔥 6</b><span>Tapser am Stück</span></div>
+    <div class="stat"><b id="s-done">14</b><span>erledigt diese Woche</span></div>
+    <div class="stat"><b>+23%</b><span>ggü. Vorwoche</span></div>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <div class="row small"><b>Deine Tapser-Spur</b><span class="muted" style="margin-left:auto">Mo – So</span></div>
+    <div class="streak" id="streak"></div>
+  </div>
+
+  <h2 class="sec">⚡ Quick Wins <span class="r muted">unter 5 Min.</span></h2>
+  <div class="card" id="quick"></div>
+
+  <h2 class="sec">Heute im Napf</h2>
+  <div class="card">
+    <div class="meal">
+      <div style="font-size:40px">🍛</div>
+      <div class="info">
+        <b>Linsen-Dal mit Spinat & Skyr-Topping</b>
+        <span class="small muted">5 Portionen · 2× heute Abend, 2× Mittag morgen</span>
+        <div class="tags"><span class="tag green">34 g Eiweiß</span><span class="tag">540 kcal</span><span class="tag pink">🤰 sicher</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">Achtung, Mausefalle!</h2>
+  <div class="card alert">
+    <div class="ico">🪤</div>
+    <div class="small"><b>Stromvertrag schnappt in 10 Wochen zu.</b><br>Kündigung bis 31.01.27 möglich. Jetzt vergleichen, bevor der Käse teurer wird.</div>
+  </div>
+
+  <h2 class="sec">Heute vor einem Monat 📖</h2>
+  <div class="card memory">
+    <div class="small muted" style="font-weight:800">17. Oktober · eingetragen von Müßmaus</div>
+    <p style="font-weight:800;margin-top:4px">🌳 Herbstspaziergang mit Kastanien sammeln. Püßmaus hat behauptet, die größte gefunden zu haben. Stimmte nicht.</p>
+  </div>
+
+  <h2 class="sec">Mini-Maus-Countdown</h2>
+  <div class="card baby">
+    <div class="row"><b style="font-size:18px">Noch ~30 Wochen 👶</b><span class="tag pink" style="margin-left:auto">Juni 2027</span></div>
+    <div class="shoes" id="shoes" aria-label="Fortschritt der Schwangerschaft"></div>
+    <div class="small muted">Jeder Schuh ist eine Woche. Die rosa Schühchen sind schon geschafft.</div>
+  </div>
+  <p class="demo">Design-Entwurf · alle Daten sind Beispiele</p>
+</section>
+
+<!-- ============ AUFGABEN ============ -->
+<section class="view" id="v-aufgaben">
+  <h2 class="sec">Dein Mäuse-Level</h2>
+  <div class="card level">
+    <div class="badge"><svg><use href="#mouse"/></svg></div>
+    <div style="flex:1">
+      <div class="row"><b style="font-size:17px">Putzmunter-Maus</b><span class="tag pink" style="margin-left:auto">Level 3</span></div>
+      <div class="xp"><i id="xp" style="width:62%"></i></div>
+      <div class="small muted" style="margin-top:6px"><span id="xp-left">95</span> 🧀 bis zur <b>Meistermaus</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row small"><b>Käse pro Tag</b><span class="legend" style="margin-left:auto;color:var(--muted)"><span style="color:var(--pues)">● Püß</span><span style="color:var(--mues)">● Müß</span></span></div>
+    <div class="week" id="week"></div>
+  </div>
+
+  <h2 class="sec">Putz-Parcours</h2>
+  <div class="chips" id="t-chips">
+    <button class="chip on" data-f="all">Alle</button>
+    <button class="chip" data-f="me">Meine</button>
+    <button class="chip" data-f="quick">⚡ Quick Wins</button>
+    <button class="chip" data-f="due">Heute fällig</button>
+  </div>
+  <div class="card" id="tasks" style="margin-top:10px"></div>
+  <p class="small muted" style="margin:10px 4px">🤰 Schwangerschaftsmodus an: Bad putzen und schwere Sachen gehen automatisch an Püßmaus.</p>
+
+  <h2 class="sec">Käseladen 🧀</h2>
+  <div class="card">
+    <div class="contract"><div class="ic">☕</div><div class="t"><b>Kaffee trinken gehen</b><small>150 🧀 · schon 2× eingelöst</small></div><span class="tag green">frei</span></div>
+    <div class="contract"><div class="ic">🍕</div><div class="t"><b>Pizza / Essen bestellen</b><small>250 🧀 · aktuelles Wochenziel</small></div><span class="tag cheese">72 %</span></div>
+    <div class="contract"><div class="ic">🍽️</div><div class="t"><b>Restaurantbesuch</b><small>500 🧀</small></div><span class="tag">36 %</span></div>
+  </div>
+</section>
+
+<!-- ============ EINKAUF ============ -->
+<section class="view" id="v-einkauf">
+  <div class="seg" id="seg">
+    <button class="on" data-p="liste">🛒 Einkaufsliste</button>
+    <button data-p="vorrat">🧺 Vorratskammer</button>
+  </div>
+
+  <div class="pane on" id="p-liste">
+    <h2 class="sec">Was fehlt im Mausbau? <span class="r muted" id="cnt"></span></h2>
+    <form class="add" id="add-form" autocomplete="off">
+      <input id="add-in" placeholder="z. B. Skyr, 2 Becher" aria-label="Artikel hinzufügen">
+      <button aria-label="Hinzufügen">+</button>
+    </form>
+    <div class="store">
+      <button class="chip on">Aldi</button><button class="chip">Rewe</button><button class="chip">Edeka</button>
+    </div>
+    <div id="shop"></div>
+    <p class="small muted" style="margin:14px 4px">🔄 Live: Hakt Müßmaus etwas ab, siehst du es sofort. Abgehakte Vorratsartikel wandern automatisch in die Vorratskammer.</p>
+  </div>
+
+  <div class="pane" id="p-vorrat">
+    <h2 class="sec">Wird knapp <span class="r muted" id="low-cnt"></span></h2>
+    <div class="card" id="low"></div>
+
+    <h2 class="sec">Aus dem Vorrat kochbar 👩‍🍳</h2>
+    <div class="card" id="cookable"></div>
+
+    <h2 class="sec">Vorratskammer <span class="r muted">Mindestmenge in Klammern</span></h2>
+    <div id="stock"></div>
+  </div>
+</section>
+
+<!-- ============ FUTTER ============ -->
+<section class="view" id="v-futter">
+  <h2 class="sec">Eiweiß heute</h2>
+  <div class="card rings">
+    <div class="ring"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle cx="32" cy="32" r="26" fill="none" stroke="var(--pues)" stroke-width="8" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="52"/></svg><div><b>74 / 108 g</b><span class="small muted">Püßmaus</span></div></div>
+    <div class="ring"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="var(--surface-2)" stroke-width="8"/><circle cx="32" cy="32" r="26" fill="none" stroke="var(--mues)" stroke-width="8" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="47"/></svg><div><b>64 / 90 g</b><span class="small muted">Müßmaus</span></div></div>
+  </div>
+  <p class="small muted" style="margin:8px 4px">💡 Noch 34 g? Ein Becher Skyr + Handvoll Nüsse ≈ 25 g.</p>
+
+  <h2 class="sec">Futterplan diese Woche <span class="r muted">kochen 1×, essen 2×</span></h2>
+  <div id="meals"></div>
+  <div style="margin-top:12px;display:grid;gap:8px">
+    <button class="btn" id="to-list">🛒 Alle Zutaten auf die Einkaufsliste</button>
+    <button class="btn soft">🎲 Neu würfeln</button>
+  </div>
+</section>
+
+<!-- ============ MAUSELOCH ============ -->
+<section class="view" id="v-mehr">
+  <h2 class="sec">Mauseloch · gemeinsame Infos</h2>
+  <div class="notes">
+    <div class="card note"><b>📶 WLAN Gäste</b><span class="small">Name & Passwort hier</span></div>
+    <div class="card note"><b>🔑 Ersatzschlüssel</b><span class="small">bei Nachbarin, 2. OG</span></div>
+    <div class="card note"><b>🩺 Nächste Vorsorge</b><span class="small">Do, 03.12. · 08:30</span></div>
+    <div class="card note"><b>🎁 Geschenkideen</b><span class="small">Mama: Kochkurs</span></div>
+  </div>
+
+  <h2 class="sec">Mäuse-Momente 📖 <span class="r muted">unser Tagebuch</span></h2>
+  <form class="card" id="diary-form" autocomplete="off">
+    <div class="add"><input id="diary-in" placeholder="Was war heute schön?" aria-label="Moment eintragen"><button aria-label="Eintragen">+</button></div>
+    <div class="emo" id="emo">
+      <button type="button" class="on">💛</button><button type="button">😂</button><button type="button">🍝</button><button type="button">🌳</button><button type="button">👶</button><button type="button">🎉</button>
+    </div>
+  </form>
+  <div class="diary" id="diary" style="margin-top:12px"></div>
+
+  <h2 class="sec">Verträge <span class="r muted">Fixkosten ~ 312 €/Monat</span></h2>
+  <div class="chips" id="c-chips">
+    <button class="chip on" data-f="all">Alle</button>
+    <button class="chip" data-f="g">Gemeinsam</button>
+    <button class="chip" data-f="p">Püßmaus</button>
+    <button class="chip" data-f="m">Müßmaus</button>
+  </div>
+  <div class="card" id="contracts" style="margin-top:10px"></div>
+
+  <h2 class="sec">Mini-Maus-Checkliste</h2>
+  <div class="card" id="baby"></div>
+</section>
+
+<nav>
+  <button class="on" data-v="heute"><span class="i">🏠</span>Heute</button>
+  <button data-v="aufgaben"><span class="i">🧹</span>Aufgaben</button>
+  <button data-v="einkauf"><span class="i">🛒</span>Einkauf</button>
+  <button data-v="futter"><span class="i">🥗</span>Futter</button>
+  <button data-v="mehr"><span class="i">🕳️</span>Mauseloch</button>
+</nav>
+<div class="toast" id="toast"></div>
+<div class="praise" id="praise" role="status" aria-live="polite">
+  <div class="big" id="pr-emo">🏆</div>
+  <h4 id="pr-h">Mausgezeichnet!</h4>
+  <p id="pr-t"></p>
+  <span class="plus" id="pr-p"></span>
+</div>
+<div class="push" id="push">
+  <div class="label">So sieht's bei <span id="pu-who">Müßmaus</span> aus</div>
+  <div class="h"><svg><use href="#mouse"/></svg>Die Milzmäuse · jetzt</div>
+  <p id="pu-t"></p>
+  <div class="act"><button class="pri" id="pu-thx">💛 Danke-Pfote schicken</button><button id="pu-x">Später</button></div>
+</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let me = 'p';
+const score = { p: 95, m: 85 }, GOAL = 250;
+
+const tasks = [
+  { n:'Spülmaschine ausräumen', pts:5, min:4, who:'p', due:true },
+  { n:'Müll & Altpapier raus', pts:5, min:3, who:'p', due:true },
+  { n:'Pflanzen gießen', pts:5, min:3, who:'m', due:false },
+  { n:'Wäsche waschen', pts:10, min:5, who:'m', due:true },
+  { n:'Wäsche aufhängen', pts:10, min:10, who:'p', due:true },
+  { n:'Wohnung saugen', pts:20, min:25, who:'p', due:false },
+  { n:'Bad putzen', pts:30, min:35, who:'p', due:false, note:'🤰 geht an Püßmaus' },
+  { n:'Bettwäsche wechseln', pts:15, min:15, who:'b', due:false },
+];
+const shop = [
+  { a:'Obst & Gemüse', n:'Babyspinat', q:'2 Beutel', src:'Dal' },
+  { a:'Obst & Gemüse', n:'Zwiebeln', q:'1 Netz' },
+  { a:'Obst & Gemüse', n:'Bananen', q:'6 Stk.' },
+  { a:'Kühlregal', n:'Skyr natur', q:'3 Becher' },
+  { a:'Kühlregal', n:'Eier', q:'10 Stk.' },
+  { a:'Kühlregal', n:'Feta (pasteurisiert)', q:'2× 200 g', src:'Ofengemüse' },
+  { a:'Trockenware', n:'Rote Linsen', q:'500 g', src:'Dal' },
+  { a:'Trockenware', n:'Kokosmilch', q:'1 Dose', src:'Dal' },
+  { a:'Tiefkühl', n:'Lachsfilet', q:'2 Pck.', src:'Ofenlachs' },
+];
+const meals = [
+  { d:'Mo', dt:'17', e:'🍛', n:'Linsen-Dal mit Spinat & Skyr', p:34, k:540, veg:true },
+  { d:'Di', dt:'18', e:'🐟', n:'Ofenlachs (durchgegart) mit Kartoffeln & Brokkoli', p:38, k:580 },
+  { d:'Mi', dt:'19', e:'🌶️', n:'Chili sin Carne mit Kidneybohnen', p:31, k:520, veg:true },
+  { d:'Do', dt:'20', e:'🍗', n:'Hähnchen-Gemüse-Reispfanne', p:42, k:560 },
+  { d:'Fr', dt:'21', e:'🥘', n:'Ofengemüse mit Kichererbsen & Feta', p:29, k:510, veg:true },
+];
+const contracts = [
+  { i:'⚡', n:'Strom', s:'Beispielanbieter · 89 €/Mon.', w:'g', st:['red','🪤 in 10 Wo.'] },
+  { i:'🔥', n:'Gas', s:'Beispielanbieter · 74 €/Mon.', w:'g', st:['cheese','Juli 27'] },
+  { i:'🌐', n:'Internet', s:'Beispielanbieter · 40 €/Mon.', w:'g', st:['green','läuft'] },
+  { i:'🛋️', n:'Hausrat', s:'jährlich · 9 €/Mon.', w:'g', st:['green','läuft'] },
+  { i:'🛡️', n:'Haftpflicht', s:'jährlich · 6 €/Mon.', w:'g', st:['pink','Baby nachtragen'] },
+  { i:'📱', n:'Handyvertrag', s:'Püßmaus · 20 €/Mon.', w:'p', st:['green','läuft'] },
+  { i:'📦', n:'Amazon Prime', s:'Müßmaus · 9 €/Mon.', w:'m', st:['cheese','Verlängert 02/27'] },
+];
+const baby = [
+  { n:'Hebamme suchen', s:'jetzt! oft früh ausgebucht', tag:['red','dringend'] },
+  { n:'Geburtsklinik anschauen & anmelden', s:'Infoabende nutzen', tag:['cheese','bis Feb.'] },
+  { n:'Elternzeit beantragen', s:'spätestens 7 Wochen vorher', tag:['cheese','bis April'] },
+  { n:'Kita-Platz anmelden', s:'Wartelisten sind lang', tag:['cheese','bald'] },
+  { n:'Kliniktasche packen', s:'Mäuseschühchen nicht vergessen 👟', tag:['','ab Mai'] },
+];
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function crumbs(x, y){
+  for(let i=0;i<10;i++){
+    const c = document.createElement('span'); c.className='crumb'; c.textContent = i%3? '🧀':'🐾';
+    c.style.left = x+'px'; c.style.top = y+'px';
+    c.style.setProperty('--dx', (Math.random()*160-80)+'px');
+    c.style.setProperty('--dy', (-Math.random()*140-30)+'px');
+    c.style.setProperty('--r', (Math.random()*360)+'deg');
+    document.body.appendChild(c); setTimeout(()=>c.remove(), 1000);
+  }
+}
+const cheers = ['Mausgezeichnet!','Mäusestark!','Piep piep, hurra!','Da tanzen die Mäuse!','Käse verdient!','Mausterhaft!'];
+
+function renderGoal(){
+  const tot = score.p + score.m;
+  $('#g-p').style.width = Math.min(100, score.p/GOAL*100)+'%';
+  $('#g-m').style.width = Math.min(100-score.p/GOAL*100, score.m/GOAL*100)+'%';
+  $('#g-pv').textContent = score.p; $('#g-mv').textContent = score.m;
+  $('#g-left').textContent = Math.max(0, GOAL-tot);
+  $('#xp-left').textContent = Math.max(0, 95 - (score.p-95));
+  $('#xp').style.width = Math.min(100, 62 + (score.p-95)/2.5)+'%';
+}
+function taskRow(t, idx){
+  const av = t.who==='b' ? '<span class="av b"></span>' : `<span class="av ${t.who}">${t.who==='p'?'P':'M'}</span>`;
+  return `<div class="task ${t.done?'done':''}" data-i="${idx}">
+    <button class="check" aria-label="Erledigt"><svg><use href="#tick"/></svg></button>
+    <div class="t"><b>${t.n}</b><small>${t.min} Min.${t.due?' · heute':''}${t.note?' · '+t.note:''}</small></div>
+    <span class="pts">+${t.pts} 🧀</span>${av}</div>`;
+}
+let tFilter = 'all';
+function renderTasks(){
+  const list = tasks.map((t,i)=>[t,i]).filter(([t])=>
+    tFilter==='all' || (tFilter==='me' && (t.who===me||t.who==='b')) || (tFilter==='quick' && t.min<=5) || (tFilter==='due' && t.due));
+  $('#tasks').innerHTML = list.map(([t,i])=>taskRow(t,i)).join('') || '<p class="small muted">Nichts zu tun. Mäuschenstill! 😴</p>';
+  $('#quick').innerHTML = tasks.map((t,i)=>[t,i]).filter(([t])=>t.min<=5).map(([t,i])=>taskRow(t,i)).join('');
+  $('#s-done').textContent = 14 + tasks.filter(t=>t.done).length;
+}
+document.addEventListener('click', e=>{
+  const row = e.target.closest('.task'); if(!row || !e.target.closest('.check')) return;
+  const t = tasks[row.dataset.i]; t.done = !t.done;
+  const who = t.who==='b' ? me : t.who;
+  score[who] += t.done ? t.pts : -t.pts;
+  if(t.done){ const r = e.target.closest('.check').getBoundingClientRect(); crumbs(r.left+r.width/2, r.top); praise(t, who); }
+  renderTasks(); renderGoal();
+});
+
+/* ---------- Lob & Partner-Push ---------- */
+const NAME = { p:'Püßmaus', m:'Müßmaus' };
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const praiseLines = [
+  ['🏆','Historischer Moment!','„{t}“ ist erledigt. Historiker werden später von diesem Tag erzählen.'],
+  ['📈','Breaking News','{me} hat „{t}“ erledigt. Die Käsebörse reagiert euphorisch.'],
+  ['👑','Maus des Moments','Bei „{t}“ hast du Profi-Arbeit abgeliefert. Die Krone steht dir.'],
+  ['🐭','Respekt aus dem Untergrund','Selbst die Wollmäuse unterm Sofa ziehen den Hut. „{t}“: erledigt.'],
+  ['🧀','Käse-Imperium','Wenn Fleiß Käse wäre, wärst du nach „{t}“ ein Emmentaler-Großkonzern.'],
+  ['🎺','Tusch, bitte!','„{t}“ erledigt. Irgendwo spielt gerade ein kleines Mäuseorchester nur für dich.'],
+  ['🏅','Das Komitee tagt','Das Komitee für außergewöhnliche Mäuseleistungen prüft eine Medaille für „{t}“.'],
+];
+const bigLines = [
+  ['🦸','Superheld*in im Haushalt','„{t}“! Das war kein Haushalt mehr, das war Hochleistungssport.'],
+];
+const partnerLines = [
+  'Kurze Info: Du wohnst mit einer absoluten Spitzenmaus zusammen. {me} hat gerade „{t}“ erledigt. 💛',
+  '{me} hat „{t}“ erledigt. Eine Danke-Pfote wäre jetzt sehr angemessen. 🐾',
+  'Glückwunsch! Deine {me} ist heute in Höchstform: „{t}“ ✔️',
+  'Was für ein Fang! {me} hat „{t}“ einfach so erledigt. Du hast echt Glück. 😌',
+];
+const fill = (s,t,me) => s.replaceAll('{t}', t.n).replaceAll('{me}', NAME[me]);
+let prH, puH;
+function praise(t, me){
+  const [emo,h,txt] = pick(t.pts>=20 ? bigLines.concat(praiseLines) : praiseLines);
+  $('#pr-emo').textContent = emo; $('#pr-h').textContent = h; $('#pr-t').textContent = fill(txt,t,me);
+  $('#pr-p').textContent = `+${t.pts} 🧀 fürs Wochenziel`;
+  const p = $('#praise'); p.classList.add('show'); clearTimeout(prH); prH = setTimeout(()=>p.classList.remove('show'), 3200);
+  const other = me==='p'?'m':'p';
+  clearTimeout(puH);
+  puH = setTimeout(()=>{
+    $('#pu-who').textContent = NAME[other];
+    $('#pu-t').textContent = fill(pick(partnerLines), t, me);
+    $('#push').classList.add('show');
+  }, 1400);
+}
+$('#praise').addEventListener('click', ()=>$('#praise').classList.remove('show'));
+$('#pu-x').addEventListener('click', ()=>$('#push').classList.remove('show'));
+$('#pu-thx').addEventListener('click', ()=>{ $('#push').classList.remove('show'); toast('💛 Danke-Pfote verschickt (+2 🧀 Bonus)'); });
+$('#t-chips').addEventListener('click', e=>{
+  const c = e.target.closest('.chip'); if(!c) return;
+  tFilter = c.dataset.f; $('#t-chips').querySelectorAll('.chip').forEach(x=>x.classList.toggle('on', x===c)); renderTasks();
+});
+
+function renderStreak(){
+  const days = ['Mo','Di','Mi','Do','Fr','Sa','So'], on=[1,1,1,1,1,1,0];
+  $('#streak').innerHTML = days.map((d,i)=>`<div class="d ${on[i]?'':'off'} ${i===5?'today':''}"><svg style="color:${on[i]?'var(--pink-strong)':'var(--mouse)'};transform:rotate(${i%2?12:-12}deg)"><use href="#paw"/></svg><span>${d}</span></div>`).join('');
+  const wk = [[15,20],[25,10],[10,30],[30,15],[5,10],[10,0],[0,0]];
+  $('#week').innerHTML = wk.map((v,i)=>`<div class="c"><div class="stack" style="height:${(v[0]+v[1])*1.6+4}px"><i style="height:${v[1]*1.6}px;background:var(--mues)"></i><i style="height:${v[0]*1.6}px;background:var(--pues)"></i></div><span>${days[i]}</span></div>`).join('');
+  const total=40, done=10;
+  $('#shoes').innerHTML = Array.from({length:total},(_,i)=>`<svg style="color:${i<done?'var(--pink-strong)':'var(--line)'}"><use href="#shoe"/></svg>`).join('');
+}
+
+function renderShop(){
+  const open = shop.filter(s=>!s.done), got = shop.filter(s=>s.done);
+  const aisles = [...new Set(open.map(s=>s.a))];
+  const row = s => `<div class="item ${s.done?'done':''}" data-n="${shop.indexOf(s)}"><button class="check"><svg><use href="#tick"/></svg></button><span class="n">${esc(s.n)}${s.src?` <span class="tag pink">${s.src}</span>`:''}</span><span class="q">${esc(s.q)}</span></div>`;
+  $('#shop').innerHTML = aisles.map(a=>`<div class="aisle">${a}</div><div class="card" style="padding:4px 12px">${open.filter(s=>s.a===a).map(row).join('')}</div>`).join('')
+    + (got.length?`<div class="aisle">✅ Im Korb (${got.length})</div><div class="card" style="padding:4px 12px;opacity:.7">${got.map(row).join('')}</div>`:'');
+  $('#cnt').textContent = `${open.length} offen`;
+}
+$('#shop').addEventListener('click', e=>{
+  const it = e.target.closest('.item'); if(!it) return;
+  const s = shop[it.dataset.n]; s.done = !s.done; renderShop();
+  const st = stock.find(x=>s.n.toLowerCase().startsWith(x.n.toLowerCase()));
+  if(st){ st.q = Math.max(0, st.q + (s.done ? (s.add||1) : -(s.add||1))); renderStock(); if(s.done) toast(`🧺 ${st.n} → Vorrat (${st.q} ${st.u})`); }
+  if(shop.every(x=>x.done)) toast('Alles im Korb! Ab nach Hause, Mäuse 🐭');
+});
+$('#add-form').addEventListener('submit', e=>{
+  e.preventDefault(); const v = $('#add-in').value.trim(); if(!v) return;
+  const [n,q] = v.split(',').map(x=>x.trim());
+  shop.unshift({ a:'Neu hinzugefügt', n, q:q||'' }); $('#add-in').value=''; renderShop(); toast(`„${n}“ ist auf der Liste 🧀`);
+});
+
+function renderMeals(){
+  $('#meals').innerHTML = meals.map(m=>`<div class="card meal"><div class="day">${m.d}<b>${m.dt}</b></div><div class="info"><b>${m.e} ${m.n}</b><div class="tags"><span class="tag green">${m.p} g Eiweiß</span><span class="tag">${m.k} kcal</span>${m.veg?'<span class="tag">🌱 veggie</span>':''}<span class="tag pink">🤰 sicher</span><span class="tag">5 Port.</span></div></div></div>`).join('');
+}
+$('#to-list').addEventListener('click', ()=>toast('17 Zutaten zusammengeführt & sortiert 🛒'));
+
+let cFilter='all';
+function renderContracts(){
+  $('#contracts').innerHTML = contracts.filter(c=>cFilter==='all'||c.w===cFilter).map(c=>`<div class="contract"><div class="ic">${c.i}</div><div class="t"><b>${c.n}</b><small>${c.s}</small></div><span class="tag ${c.st[0]}">${c.st[1]}</span></div>`).join('');
+  $('#baby').innerHTML = baby.map(b=>`<div class="task"><button class="check"><svg><use href="#tick"/></svg></button><div class="t"><b>${b.n}</b><small>${b.s}</small></div><span class="tag ${b.tag[0]}">${b.tag[1]}</span></div>`).join('');
+}
+$('#c-chips').addEventListener('click', e=>{
+  const c = e.target.closest('.chip'); if(!c) return;
+  cFilter = c.dataset.f; $('#c-chips').querySelectorAll('.chip').forEach(x=>x.classList.toggle('on', x===c)); renderContracts();
+});
+$('#baby').addEventListener('click', e=>{ const r=e.target.closest('.task'); if(r&&e.target.closest('.check')) r.classList.toggle('done'); });
+
+document.querySelector('nav').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on', x===b));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on', v.id==='v-'+b.dataset.v));
+  window.scrollTo({top:0});
+});
+document.querySelector('.who').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return; me = b.dataset.who;
+  document.querySelectorAll('.who button').forEach(x=>x.classList.toggle('on', x===b));
+  $('#greet').textContent = me==='p' ? 'Moin Püßmaus 🐾' : 'Moin Müßmaus 🐾';
+  renderTasks();
+});
+
+/* ---------- Vorrat ---------- */
+const stock = [
+  { n:'Haferflocken', q:5, u:'Pck.', min:2, a:'Trocken' },
+  { n:'Rote Linsen', q:1, u:'Pck.', min:2, a:'Trocken' },
+  { n:'Reis', q:2, u:'Pck.', min:1, a:'Trocken' },
+  { n:'Vollkornnudeln', q:4, u:'Pck.', min:2, a:'Trocken' },
+  { n:'Kichererbsen', q:3, u:'Dosen', min:2, a:'Konserven' },
+  { n:'Kidneybohnen', q:0, u:'Dosen', min:2, a:'Konserven' },
+  { n:'Passierte Tomaten', q:4, u:'Pck.', min:2, a:'Konserven' },
+  { n:'Kokosmilch', q:1, u:'Dosen', min:1, a:'Konserven' },
+  { n:'Eier', q:4, u:'Stk.', min:6, a:'Kühlschrank' },
+  { n:'Skyr', q:0, u:'Becher', min:3, a:'Kühlschrank' },
+  { n:'TK-Spinat', q:2, u:'Pck.', min:1, a:'Tiefkühler' },
+];
+const dishes = [
+  { e:'🍛', n:'Linsen-Dal mit Spinat', p:34, need:['Rote Linsen','Kokosmilch','TK-Spinat','Passierte Tomaten'] },
+  { e:'🍳', n:'Shakshuka mit Kichererbsen', p:29, need:['Eier','Passierte Tomaten','Kichererbsen'] },
+  { e:'🌶️', n:'Chili sin Carne', p:31, need:['Kidneybohnen','Passierte Tomaten','Reis'] },
+  { e:'🥣', n:'Protein-Overnight-Oats (Frühstück)', p:30, need:['Haferflocken','Skyr'] },
+  { e:'🍝', n:'Spinat-Nudeln mit Ei', p:27, need:['Vollkornnudeln','TK-Spinat','Eier'] },
+];
+const isLow = s => s.q < s.min;
+function renderStock(){
+  const low = stock.filter(isLow);
+  $('#low-cnt').textContent = low.length ? `${low.length} Artikel` : '';
+  $('#low').innerHTML = low.length
+    ? low.map(s=>{ const on = shop.some(x=>!x.done && x.n.toLowerCase().startsWith(s.n.toLowerCase()));
+        return `<div class="stock"><div class="n">${s.n}<small>noch ${s.q} ${s.u} · Ziel ${s.min}</small></div><span class="tag ${s.q?'cheese':'red'}">${s.q?'knapp':'leer'}</span><button class="mini ${on?'in':''}" data-buy="${s.n}" aria-label="Auf die Einkaufsliste">${on?'✓':'🛒'}</button></div>`; }).join('')
+      + `<button class="btn" id="buy-all" style="margin-top:10px">🛒 Alles Knappe auf die Liste</button>`
+    : '<p class="small muted">Alles gut gefüllt. Die Vorratskammer ist mäuserich! 🐭</p>';
+  const scored = dishes.map(d=>({ ...d, miss: d.need.filter(x=>!(stock.find(s=>s.n===x)?.q>0)) })).sort((a,b)=>a.miss.length-b.miss.length);
+  $('#cookable').innerHTML = scored.map(d=>`<div class="cook"><span class="e">${d.e}</span><div class="t"><b>${d.n}</b><small>${d.miss.length?'fehlt: '+d.miss.join(', '):'alles da, sofort kochbar'} · ${d.p} g Eiweiß</small></div><span class="tag ${d.miss.length?'cheese':'green'}">${d.miss.length?(d.need.length-d.miss.length)+'/'+d.need.length:'✅ alles da'}</span></div>`).join('');
+  const groups = [...new Set(stock.map(s=>s.a))];
+  $('#stock').innerHTML = groups.map(g=>`<div class="aisle">${g}</div><div class="card" style="padding:4px 12px">${stock.filter(s=>s.a===g).map(s=>`<div class="stock"><div class="n">${s.n}<small>${s.u} (${s.min})</small></div>${isLow(s)?`<span class="tag ${s.q?'cheese':'red'}">${s.q?'knapp':'leer'}</span>`:''}<div class="step"><button data-d="-1" data-s="${s.n}" aria-label="weniger">−</button><b>${s.q}</b><button data-d="1" data-s="${s.n}" aria-label="mehr">+</button></div></div>`).join('')}</div>`).join('');
+}
+function addToShop(s){
+  if(shop.some(x=>!x.done && x.n.toLowerCase().startsWith(s.n.toLowerCase()))) return false;
+  shop.unshift({ a:'Aus dem Vorrat', n:s.n, q:`${s.min - s.q} ${s.u}`, add:s.min - s.q }); return true;
+}
+$('#p-vorrat').addEventListener('click', e=>{
+  const st = e.target.closest('[data-s]');
+  if(st){ const s = stock.find(x=>x.n===st.dataset.s); s.q = Math.max(0, s.q + +st.dataset.d); renderStock(); return; }
+  const b = e.target.closest('[data-buy]');
+  if(b){ if(addToShop(stock.find(x=>x.n===b.dataset.buy))) toast(`„${b.dataset.buy}“ steht auf der Liste 🛒`); renderShop(); renderStock(); return; }
+  if(e.target.closest('#buy-all')){ const n = stock.filter(isLow).filter(addToShop).length; toast(n?`${n} Artikel auf die Liste gesetzt 🛒`:'Steht schon alles drauf 👍'); renderShop(); renderStock(); }
+});
+$('#seg').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  $('#seg').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on', p.id==='p-'+b.dataset.p));
+});
+
+/* ---------- Tagebuch ---------- */
+const diary = [
+  { d:'16. Nov.', who:'p', e:'🌳', t:'Sonntagsspaziergang, erste Glühweinbude entdeckt. Kinderpunsch für Müßmaus, solidarisch einer für Püßmaus.' },
+  { d:'12. Nov.', who:'m', e:'👶', t:'Vorsorge: Mini-Maus hat auf dem Ultraschall gewunken. Ganz sicher. 👋' },
+  { d:'8. Nov.', who:'m', e:'🍝', t:'Zum ersten Mal Linsen-Dal gekocht. Püßmaus wollte dreimal Nachschlag.' },
+];
+let emo = '💛';
+function renderDiary(){
+  $('#diary').innerHTML = diary.map(x=>`<div class="entry"><div class="card"><div class="d">${x.d} · ${NAME[x.who]}</div><p>${x.e} ${esc(x.t)}</p></div></div>`).join('');
+}
+$('#emo').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return; emo = b.textContent;
+  $('#emo').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+});
+$('#diary-form').addEventListener('submit', e=>{
+  e.preventDefault(); const v = $('#diary-in').value.trim(); if(!v) return;
+  diary.unshift({ d:'Heute', who:me, e:emo, t:v }); $('#diary-in').value=''; renderDiary(); toast('📖 Moment festgehalten');
+});
+
+renderGoal(); renderTasks(); renderStreak(); renderShop(); renderMeals(); renderContracts(); renderStock(); renderDiary();
+</script>
+</body>
+</html>

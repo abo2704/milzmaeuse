@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Die Milzmäuse</title>
+<meta name="description" content="Unser gemeinsamer Mausbau: Einkauf, Vorrat, Aufgaben, Infos und Tagebuch.">
+<meta name="theme-color" content="#FBF7F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18161C" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Milzmäuse">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="paw" viewBox="0 0 32 32">
+      <ellipse cx="16" cy="21" rx="7" ry="6" fill="currentColor"/>
+      <ellipse cx="7.5" cy="13" rx="3" ry="3.6" fill="currentColor"/>
+      <ellipse cx="13" cy="8.5" rx="3" ry="3.8" fill="currentColor"/>
+      <ellipse cx="19" cy="8.5" rx="3" ry="3.8" fill="currentColor"/>
+      <ellipse cx="24.5" cy="13" rx="3" ry="3.6" fill="currentColor"/>
+    </symbol>
+    <symbol id="shoe" viewBox="0 0 24 24">
+      <path d="M5 5h6v7c0 1 1 2 3 2.4l4 .8c2 .4 3 1.6 3 3.3V20H3.5C2.7 20 2 19.3 2 18.5V8c0-1.7 1.3-3 3-3z" fill="currentColor"/>
+      <path d="M2 17h19" stroke="var(--surface)" stroke-width="1.6"/>
+    </symbol>
+    <symbol id="mouse" viewBox="0 0 64 64">
+      <circle cx="16" cy="18" r="12" fill="#B8B3C0"/><circle cx="16" cy="18" r="7" fill="#F4A7B9"/>
+      <circle cx="48" cy="18" r="12" fill="#B8B3C0"/><circle cx="48" cy="18" r="7" fill="#F4A7B9"/>
+      <ellipse cx="32" cy="38" rx="20" ry="18" fill="#C9C5D0"/>
+      <circle cx="25" cy="35" r="2.6" fill="#2B2730"/><circle cx="39" cy="35" r="2.6" fill="#2B2730"/>
+      <circle cx="26" cy="34" r=".9" fill="#fff"/><circle cx="40" cy="34" r=".9" fill="#fff"/>
+      <ellipse cx="32" cy="43" rx="3.2" ry="2.4" fill="#E0718D"/>
+      <circle cx="21" cy="43" r="3" fill="#F4A7B9" opacity=".6"/><circle cx="43" cy="43" r="3" fill="#F4A7B9" opacity=".6"/>
+      <path d="M20 46l-9 1M20 48l-8 4M44 46l9 1M44 48l8 4" stroke="#8E8A96" stroke-width="1.2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<!-- ================= LOGIN & ONBOARDING ================= -->
+<section class="auth" id="auth" hidden>
+  <div class="hero">
+    <svg><use href="#mouse"/></svg>
+    <h1>Die Milzmäuse</h1>
+    <p id="auth-sub">Willkommen im Mausbau 🐾</p>
+  </div>
+
+  <form class="card" id="f-login" style="display:flex;flex-direction:column;gap:12px" hidden>
+    <div class="seg" id="login-mode" style="margin:0">
+      <button type="button" class="on" data-m="in">Anmelden</button>
+      <button type="button" data-m="up">Konto anlegen</button>
+    </div>
+    <div class="field"><label for="email">E-Mail</label><input id="email" type="email" autocomplete="email" required placeholder="maus@beispiel.de"></div>
+    <div class="field"><label for="password">Passwort</label><input id="password" type="password" autocomplete="current-password" required minlength="8" placeholder="mindestens 8 Zeichen"></div>
+    <button class="btn pink" id="login-btn">Rein in den Mausbau 🐭</button>
+    <p class="small muted" style="text-align:center">Nur einmal nötig. Danach bleibst du eingeloggt.</p>
+  </form>
+
+  <form class="card" id="f-onboard" style="display:flex;flex-direction:column;gap:14px" hidden>
+    <div class="field"><label>Welche Maus bist du?</label>
+      <div class="pickwho" id="pickwho">
+        <button type="button" data-who="p">🐭 Püßmaus<small>André</small></button>
+        <button type="button" data-who="m">🐭 Müßmaus<small>Andrés Frau</small></button>
+      </div>
+    </div>
+    <div class="seg" id="ob-mode" style="margin:0">
+      <button type="button" class="on" data-m="new">Neuer Haushalt</button>
+      <button type="button" data-m="join">Mit Code beitreten</button>
+    </div>
+    <div class="field" id="ob-code" hidden><label for="invite">Einladungscode</label><input id="invite" autocapitalize="characters" placeholder="z. B. 4F7A2C" maxlength="8"></div>
+    <button class="btn pink">Los geht's 🧀</button>
+  </form>
+  <p class="err" id="auth-err" hidden></p>
+</section>
+
+<!-- ================= APP ================= -->
+<main id="main" hidden>
+<header class="top">
+  <svg class="logo"><use href="#mouse"/></svg>
+  <div>
+    <h1>Die Milzmäuse</h1>
+    <p id="greet"></p>
+  </div>
+  <div class="who" id="demo-who" hidden>
+    <button data-who="p">Püß</button><button data-who="m">Müß</button>
+  </div>
+  <div class="sync" id="sync" hidden><i></i>live</div>
+</header>
+<div class="demo-banner" id="demo-banner" hidden>Demo-Modus: Daten bleiben nur auf diesem Gerät. Oben zwischen Püß und Müß wechseln.</div>
+
+<!-- HEUTE -->
+<section class="view on" id="v-heute">
+  <div id="away"></div>
+  <h2 class="sec">Gemeinsames Wochenziel</h2>
+  <button class="card goal" id="goal">
+    <svg class="paws" viewBox="0 0 120 120" aria-hidden="true"><use href="#paw" x="0" y="50" width="34" height="34" color="#3A2A00"/><use href="#paw" x="40" y="22" width="34" height="34" color="#3A2A00"/><use href="#paw" x="80" y="-4" width="34" height="34" color="#3A2A00"/></svg>
+    <div class="sub" id="g-sub"></div>
+    <h3 id="g-reward"></h3>
+    <div class="bar"><i class="p" id="g-p"></i><i class="m" id="g-m"></i></div>
+    <div class="legend"><span class="lp">Püßmaus <b id="g-pv">0</b></span><span class="lm">Müßmaus <b id="g-mv">0</b></span><span style="margin-left:auto">/ <b id="g-goal">250</b> 🧀</span></div>
+  </button>
+
+  <div class="stats">
+    <div class="stat"><b id="s-streak">0</b><span>Tapser am Stück</span></div>
+    <div class="stat"><b id="s-week">0</b><span>erledigt diese Woche</span></div>
+    <div class="stat"><b id="s-trend">–</b><span>ggü. Vorwoche</span></div>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <div class="row small"><b>Deine Tapser-Spur</b><span class="muted" style="margin-left:auto">diese Woche</span></div>
+    <div class="streak" id="streak"></div>
+  </div>
+
+  <h2 class="sec">Heute fällig <span class="r muted" id="due-cnt"></span></h2>
+  <div class="card flush" id="today-tasks"></div>
+
+  <div id="low-hint"></div>
+  <div id="memory"></div>
+
+  <h2 class="sec">Mini-Maus-Countdown</h2>
+  <div class="card">
+    <div class="row"><b style="font-size:18px" id="baby-left"></b><span class="tag pink" style="margin-left:auto" id="baby-date"></span></div>
+    <div class="shoes" id="shoes" aria-hidden="true"></div>
+    <div class="small muted">Jeder Schuh ist eine Woche. Die rosa Schühchen sind schon geschafft.</div>
+  </div>
+</section>
+
+<!-- AUFGABEN -->
+<section class="view" id="v-aufgaben">
+  <h2 class="sec">Dein Mäuse-Level</h2>
+  <div class="card level">
+    <div class="badge"><svg><use href="#mouse"/></svg></div>
+    <div style="flex:1;min-width:0">
+      <div class="row"><b style="font-size:17px" id="lv-name"></b><span class="tag pink" style="margin-left:auto" id="lv-n"></span></div>
+      <div class="xp"><i id="xp"></i></div>
+      <div class="small muted" style="margin-top:6px" id="lv-next"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row small"><b>Käse pro Tag</b><span class="legend" style="margin-left:auto;color:var(--muted)"><span style="color:var(--pues)">● Püß</span><span style="color:var(--mues)">● Müß</span></span></div>
+    <div class="week" id="week"></div>
+  </div>
+
+  <h2 class="sec">Putz-Parcours <span class="r"><button id="add-task">+ Neu</button></span></h2>
+  <div class="chips" id="t-chips">
+    <button class="chip on" data-f="due">Fällig</button>
+    <button class="chip" data-f="me">Meine</button>
+    <button class="chip" data-f="quick">⚡ Quick Wins</button>
+    <button class="chip" data-f="all">Alle</button>
+  </div>
+  <div class="card flush" id="tasks" style="margin-top:10px"></div>
+
+  <h2 class="sec">Käseladen 🧀 <span class="r"><button id="add-reward">+ Neu</button></span></h2>
+  <div class="card flush" id="rewards"></div>
+  <p class="small muted" style="margin:8px 4px">Tippe auf eine Belohnung, um sie zum Wochenziel zu machen.</p>
+</section>
+
+<!-- EINKAUF -->
+<section class="view" id="v-einkauf">
+  <div class="seg" id="seg">
+    <button class="on" data-p="liste">🛒 Einkaufsliste</button>
+    <button data-p="vorrat">🧺 Vorratskammer</button>
+  </div>
+
+  <div class="pane on" id="p-liste">
+    <h2 class="sec">Was fehlt im Mausbau? <span class="r muted" id="shop-cnt"></span></h2>
+    <form class="add" id="f-shop" autocomplete="off">
+      <input id="shop-in" placeholder="z. B. Skyr, 3 Becher" aria-label="Artikel hinzufügen" enterkeyhint="done">
+      <button aria-label="Hinzufügen">+</button>
+    </form>
+    <div id="shop"></div>
+    <p class="small muted" style="margin:14px 4px">Tipp: „Name, Menge“ eintippen. Abgehakte Vorratsartikel wandern automatisch in die Vorratskammer.</p>
+  </div>
+
+  <div class="pane" id="p-vorrat">
+    <h2 class="sec">Wird knapp <span class="r muted" id="low-cnt"></span></h2>
+    <div class="card" id="low"></div>
+    <h2 class="sec">Aus dem Vorrat kochbar 👩‍🍳</h2>
+    <div class="card flush" id="cookable"></div>
+    <h2 class="sec">Vorratskammer <span class="r"><button id="add-stock">+ Neu</button></span></h2>
+    <div id="stock"></div>
+  </div>
+</section>
+
+<!-- MAUSELOCH -->
+<section class="view" id="v-mehr">
+  <h2 class="sec">Mauseloch · gemeinsame Infos</h2>
+  <div class="notes" id="notes"></div>
+
+  <h2 class="sec">Mäuse-Momente 📖 <span class="r muted">unser Tagebuch</span></h2>
+  <form class="card" id="f-diary" autocomplete="off">
+    <div class="add"><input id="diary-in" placeholder="Was war heute schön?" aria-label="Moment eintragen" enterkeyhint="done"><button aria-label="Eintragen">+</button></div>
+    <div class="emo" id="emo"></div>
+  </form>
+  <div class="diary" id="diary"></div>
+
+  <h2 class="sec">Mini-Maus-Checkliste <span class="r"><button id="add-baby">+ Neu</button></span></h2>
+  <div class="card flush" id="baby"></div>
+
+  <h2 class="sec">Einstellungen</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row"><span class="t"><b>Einladungscode</b><small>für die zweite Maus zum Beitreten</small></span><b id="invite-code" style="font-size:20px;letter-spacing:.1em"></b></div>
+    <button class="btn soft" id="edit-due">👶 Geburtstermin ändern</button>
+    <button class="btn soft" id="sign-out">Abmelden</button>
+  </div>
+  <p class="foot">Die Milzmäuse · mit 🧀 gebaut</p>
+</section>
+
+<nav class="tabs" id="tabs">
+  <button class="on" data-v="heute"><span class="i">🏠</span>Heute</button>
+  <button data-v="aufgaben"><span class="i">🧹</span>Aufgaben</button>
+  <button data-v="einkauf"><span class="i">🛒</span>Einkauf<span class="dot" id="shop-dot" hidden></span></button>
+  <button data-v="mehr"><span class="i">🕳️</span>Mauseloch</button>
+</nav>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="praise" id="praise" role="status" aria-live="polite">
+  <div class="big" id="pr-emo"></div>
+  <h4 id="pr-h"></h4>
+  <p id="pr-t"></p>
+  <span class="plus" id="pr-p"></span>
+  <button class="link" id="pr-undo" style="display:block;margin:12px auto 0;font-size:13px">Ups, war ein Versehen</button>
+</div>
+<div class="push" id="push">
+  <div class="label" id="pu-label" hidden></div>
+  <div class="h"><svg><use href="#mouse"/></svg>Die Milzmäuse · jetzt</div>
+  <p id="pu-t"></p>
+  <div class="act"><button class="pri" id="pu-thx">💛 Danke-Pfote schicken</button><button id="pu-x">Später</button></div>
+</div>
+<dialog class="sheet" id="sheet"><form method="dialog" id="sheet-form"></form></dialog>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
