@@ -1,5 +1,5 @@
 import { createDb, DEMO, TABLES } from './db.js';
-import { SEED, DISHES } from './seed.js';
+import { SEED, DISHES, CHAINS } from './seed.js';
 import { CATS, QUICK, monthly, contractStatus, statusTag, fmtDate, contractIcs, HELP, letter } from './contracts.js';
 import { PRAISE, PRAISE_BIG, PARTNER, OVERDUE, pick, fill, levelOf, AISLES, guessAisle } from './texts.js';
 
@@ -136,7 +136,9 @@ function onChange(t, p) {
   if (t !== 'task_log' || !p?.new) return;
   const l = p.new;
   if (p.eventType === 'INSERT' && l.kind === 'task' && l.by_who !== S.me) {
-    showPush(fill(pick(PARTNER), l.task_name, NAME(l.by_who)), l);
+    const src = S.tasks.find(t => t.id === l.task_id), nx = src && nextTask(src);
+    const mine = nx && (nx.assignee === S.me || nx.assignee === 'b');
+    showPush(fill(pick(PARTNER), l.task_name, NAME(l.by_who)) + (mine ? `\n👉 Jetzt bist du dran: „${nx.name}“${nx.after_days ? (nx.after_days === 1 ? ' (ab morgen)' : ` (in ${nx.after_days} Tagen)`) : ''}` : ''), l);
   }
   if (p.eventType === 'UPDATE' && l.thanked && l.by_who === S.me && !seenThanks.has(l.id)) {
     seenThanks.add(l.id);
@@ -210,6 +212,8 @@ $('#f-onboard').addEventListener('submit', async e => {
     else {
       await db.createHousehold(obWho, name);
       for (const [t, rows] of Object.entries(SEED)) await db.insert(t, rows);
+      const tasks = await db.list('tasks'), byName = n => tasks.find(t => t.name === n);
+      for (const [a, b] of CHAINS) if (byName(a) && byName(b)) await db.update('tasks', byName(a).id, { next_task_id: byName(b).id });
     }
     await route();
   } catch (err) { authErr(err.message); }
@@ -366,10 +370,17 @@ function dueLabel(t) {
   if (d < 0) return `<span style="color:var(--red)">überfällig seit ${-d} ${-d === 1 ? 'Tag' : 'Tagen'}</span>`;
   return d === 0 ? 'heute' : d === 1 ? 'morgen' : `in ${d} Tagen`;
 }
+const prevTask = t => S.tasks.find(x => x.next_task_id === t.id);
+const nextTask = t => t.next_task_id && S.tasks.find(x => x.id === t.next_task_id);
+function chainLabel(t) {
+  const p = t.chained && prevTask(t), n = nextTask(t);
+  return [p ? `↪ nach „${esc(p.name)}“` : repeatLabel(t.repeat_days), n ? `dann „${esc(n.name)}“` : ''].filter(Boolean).join(' · ');
+}
 function taskRow(t) {
-  return `<div class="task" data-task="${t.id}">
-    <button class="check" aria-label="${esc(t.name)} erledigt">${tick}</button>
-    <div class="t"><b>${esc(t.name)}</b><small>${t.minutes} Min. · ${dueLabel(t)} · ${repeatLabel(t.repeat_days)}${t.heavy ? ' · 💪' : ''}</small></div>
+  const waiting = t.chained && t.done_at;
+  return `<div class="task ${waiting ? 'waiting' : ''}" data-task="${t.id}">
+    ${waiting ? '<span class="check wait" aria-hidden="true">⏳</span>' : `<button class="check" aria-label="${esc(t.name)} erledigt">${tick}</button>`}
+    <div class="t"><b>${esc(t.name)}</b><small>${t.minutes} Min. · ${waiting ? 'wartet' : dueLabel(t)} · ${chainLabel(t)}${t.heavy ? ' · 💪' : ''}</small></div>
     <span class="pts">+${t.points} 🧀</span><span class="av ${t.assignee}">${t.assignee === 'b' ? '' : t.assignee === 'p' ? 'P' : 'M'}</span>
     <button class="more" data-edit-task="${t.id}" aria-label="Bearbeiten">⋯</button></div>`;
 }
@@ -394,7 +405,8 @@ function renderTasks() {
   const list = openTasks().filter(t =>
     tFilter === 'all' || (tFilter === 'due' && t.due <= td) || (tFilter === 'me' && (t.assignee === S.me || t.assignee === 'b')) || (tFilter === 'quick' && t.minutes <= 5));
   const overdue = list.some(t => t.due < td);
-  $('#tasks').innerHTML = (list.map(taskRow).join('') || `<p class="empty">${tFilter === 'due' ? 'Nichts fällig. Mäuschenstill! 😴' : 'Keine Aufgaben hier.'}</p>`)
+  const waiting = tFilter === 'all' ? S.tasks.filter(t => t.chained && t.done_at) : [];
+  $('#tasks').innerHTML = (list.concat(waiting).map(taskRow).join('') || `<p class="empty">${tFilter === 'due' ? 'Nichts fällig. Mäuschenstill! 😴' : 'Keine Aufgaben hier.'}</p>`)
     + (overdue && tFilter === 'due' ? `<p class="small muted" style="padding:8px 4px">${pick(OVERDUE)}</p>` : '');
 }
 // Käse pro Tag: angetippter Tag zeigt, was erledigt wurde
@@ -426,11 +438,16 @@ async function completeTask(task, el) {
   crumbs(el);
   el.closest('.task')?.classList.add('done');
   const prev = { due: task.due, done_at: task.done_at };
+  const next = task.next_task_id && S.tasks.find(t => t.id === task.next_task_id);
+  const prevNext = next && { due: next.due, done_at: next.done_at };
   await act(async () => {
     const [log] = await db.insert('task_log', { task_id: task.id, task_name: task.name, points: task.points, by_who: S.me });
-    await db.update('tasks', task.id, task.repeat_days ? { due: addDays(today(), task.repeat_days) } : { done_at: new Date().toISOString() });
-    lastDone = { task, prev, log };
+    // Wiederkehrend → neu terminieren; einmalig oder Folgeaufgabe → ausblenden (Folgeaufgabe wartet auf den nächsten Durchlauf)
+    await db.update('tasks', task.id, task.repeat_days && !task.chained ? { due: addDays(today(), task.repeat_days) } : { done_at: new Date().toISOString() });
+    if (next) await db.update('tasks', next.id, { done_at: null, due: addDays(today(), next.after_days || 0) });
+    lastDone = { task, prev, log, next, prevNext };
     praise(task, log);
+    if (next) setTimeout(() => toast(`👉 Weiter geht's: „${next.name}“ ist jetzt bei ${next.assignee === 'b' ? 'euch beiden' : NAME(next.assignee)}${next.after_days ? ` (ab ${next.after_days === 1 ? 'morgen' : `in ${next.after_days} Tagen`})` : ''}`, DUR.important), 600);
   });
   scheduleReload('tasks'); scheduleReload('task_log');
 }
@@ -443,14 +460,18 @@ function praise(task, log) {
   clearTimeout(prH); prH = setTimeout(() => p.classList.remove('show'), DUR.praise);
   if (DEMO) { // Vorschau, was die andere Maus sieht
     clearTimeout(puH);
-    puH = setTimeout(() => showPush(fill(pick(PARTNER), task.name, NAME(S.me)), log, `So sieht's bei ${NAME(other())} aus`), 1500);
+    const nx = nextTask(task), forOther = nx && (nx.assignee === other() || nx.assignee === 'b');
+    puH = setTimeout(() => showPush(fill(pick(PARTNER), task.name, NAME(S.me)) + (forOther ? `\n👉 Jetzt bist du dran: „${nx.name}“` : ''), log, `So sieht's bei ${NAME(other())} aus`), 1500);
   }
 }
 $('#praise').addEventListener('click', async e => {
   if (e.target.closest('#pr-undo') && lastDone) {
-    const { task, prev, log } = lastDone; lastDone = null;
+    const { task, prev, log, next, prevNext } = lastDone; lastDone = null;
     $('#praise').classList.remove('show'); $('#push').classList.remove('show'); clearTimeout(puH);
-    await act(async () => { await db.remove('task_log', log.id); await db.update('tasks', task.id, prev); });
+    await act(async () => {
+      await db.remove('task_log', log.id); await db.update('tasks', task.id, prev);
+      if (next) await db.update('tasks', next.id, prevNext);
+    });
     toast('Rückgängig gemacht. Passiert den besten Mäusen.');
     return;
   }
@@ -485,10 +506,28 @@ const TASK_FIELDS = [
   { k: 'due', label: 'Nächstes Mal fällig', type: 'date' },
   { k: 'heavy', label: '💪 Schwer oder mit Putzchemie<small>Geht während der Schwangerschaft automatisch an Püßmaus</small>', type: 'checkbox' },
 ];
+// Formular inkl. Folgeaufgabe; t = bestehende Aufgabe (oder undefined bei neu)
+function taskFields(t) {
+  const others = S.tasks.filter(x => x.id !== t?.id).sort((a, b) => a.name.localeCompare(b.name));
+  const f = [...TASK_FIELDS, { k: 'next_task_id', label: 'Danach folgt (optional)', type: 'select', options: [['null', '— nichts —'], ...others.map(x => [x.id, x.name])] }];
+  if (t?.chained) f.push({ k: 'after_days', label: 'Fällig nach dem Vorgänger', type: 'select', num: true, options: [[0, 'sofort'], [1, '1 Tag später'], [2, '2 Tage später'], [3, '3 Tage später']] });
+  return f;
+}
 const taskSave = vals => ({ ...vals, assignee: vals.heavy ? 'p' : vals.assignee, minutes: Math.round(vals.minutes) || 5 });
+// Folgeaufgaben-Verknüpfung pflegen: neue Folgeaufgabe wartet ab jetzt auf ihren Vorgänger,
+// eine nicht mehr verknüpfte wird wieder zur normalen Aufgabe.
+async function relink(taskId, oldNext, newNext) {
+  if (newNext && newNext !== oldNext) {
+    const n = S.tasks.find(x => x.id === newNext);
+    await db.update('tasks', newNext, { chained: true, repeat_days: null, ...(n && !n.done_at ? { done_at: new Date().toISOString() } : {}) });
+  }
+  if (oldNext && oldNext !== newNext && !S.tasks.some(x => x.id !== taskId && x.next_task_id === oldNext)) {
+    await db.update('tasks', oldNext, { chained: false, done_at: null, due: today() });
+  }
+}
 $('#add-task').onclick = () => sheet({
-  title: 'Neue Aufgabe', fields: TASK_FIELDS, values: { due: today() }, saveLabel: 'Anlegen',
-  onSave: v => db.insert('tasks', taskSave(v)),
+  title: 'Neue Aufgabe', fields: taskFields(), values: { due: today(), next_task_id: 'null' }, saveLabel: 'Anlegen',
+  onSave: async v => { const [t] = await db.insert('tasks', taskSave(v)); await relink(t.id, null, v.next_task_id); },
 });
 document.addEventListener('click', e => {
   const chk = e.target.closest('.task .check');
@@ -502,8 +541,16 @@ document.addEventListener('click', e => {
   if (ed) {
     const t = S.tasks.find(x => x.id === ed.dataset.editTask);
     sheet({
-      title: 'Aufgabe bearbeiten', fields: TASK_FIELDS, values: { ...t, repeat_days: t.repeat_days ?? 'null' },
-      onSave: v => db.update('tasks', t.id, taskSave(v)), onDelete: () => db.remove('tasks', t.id),
+      title: 'Aufgabe bearbeiten', fields: taskFields(t), values: { ...t, repeat_days: t.repeat_days ?? 'null', next_task_id: t.next_task_id ?? 'null' },
+      onSave: async v => {
+        const patch = taskSave(v);
+        if (t.chained) patch.repeat_days = null; // Folgeaufgaben wiederholen sich über ihren Vorgänger
+        await db.update('tasks', t.id, patch); await relink(t.id, t.next_task_id, v.next_task_id);
+      },
+      onDelete: async () => {
+        const p = prevTask(t); await db.remove('tasks', t.id);
+        if (p) await db.update('tasks', p.id, { next_task_id: null });
+      },
     });
   }
 });
@@ -831,7 +878,7 @@ function showView(v) {
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) showView(b.dataset.v); };
 
 /* ============ Los geht's ============ */
-const APP_VERSION = 'v5'; // gleich halten mit VERSION in sw.js
+const APP_VERSION = 'v6'; // gleich halten mit VERSION in sw.js
 $('.foot').textContent = `Die Milzmäuse ${APP_VERSION} · mit 🧀 gebaut`;
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // Kommt eine neue Version, einmal automatisch neu laden, damit alte und neue Dateien nicht gemischt laufen

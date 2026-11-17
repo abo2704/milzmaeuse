@@ -99,6 +99,8 @@ button.stat{cursor:pointer;width:100%}
 .task:last-child,.item:last-child,.stock:last-child,.cook:last-child,.contract:last-child{border-bottom:0}
 .check{width:30px;height:30px;flex:none;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;transition:all .2s}
 .check svg{width:16px;height:16px;opacity:0;transform:scale(.4);transition:all .25s cubic-bezier(.2,1.6,.4,1)}
+.check.wait{border-style:dashed;font-size:14px}
+.task.waiting .t,.task.waiting .pts{opacity:.55}
 .done .check{background:var(--green);border-color:var(--green)}
 .done .check svg{opacity:1;transform:scale(1)}
 .t{flex:1;min-width:0}
@@ -211,7 +213,7 @@ nav.tabs .dot{position:absolute;top:2px;left:calc(50% + 8px);min-width:16px;heig
 .push.show{transform:translate(-50%,0)}
 .push .h{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--muted)}
 .push .h svg{width:20px;height:20px}
-.push p{font-size:14px;font-weight:700;margin-top:6px;line-height:1.35}
+.push p{font-size:14px;font-weight:700;margin-top:6px;line-height:1.35;white-space:pre-line}
 .push .act{display:flex;gap:8px;margin-top:10px}
 .push .act button{flex:1;font-size:13px;font-weight:900;padding:9px;border-radius:12px;background:var(--surface-2)}
 .push .act button.pri{background:var(--pink-strong);color:#fff}

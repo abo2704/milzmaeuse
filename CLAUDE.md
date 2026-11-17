@@ -8,6 +8,7 @@ Baby kommt im Juni 2027. Sprache der App: Deutsch, verspielt mit Mäuse-Wortspie
 - **MVP in `app/`** (fertig, getestet im Demo-Modus): Login per E-Mail + Passwort (E-Mail-Vorlagen sind im Supabase-Free-Plan ohne eigenes SMTP nicht editierbar, daher kein OTP-Code; "Confirm email" aus), Haushalt gründen/beitreten (Einladungscode), Heute, Aufgaben + Gamification + Lob + Danke-Pfote, Käseladen/Wochenziel, Einkaufsliste (Gang-Erkennung), Vorrat (knapp → Liste, kochbar), Mauseloch-Infos, Tagebuch, Baby-Checkliste, Geburtstermin.
 - Live unter https://abo2704.github.io/milzmaeuse/ (Supabase-Projekt azcsltcyybjpiflbnrhe). Deploy: Nutzer committet + pusht per GitHub Desktop.
 - Verträge-Modul (`js/contracts.js`, Tabelle aus `supabase/002_vertraege.sql`): Fristberechnung, Mausefalle auf "Heute", .ics-Download, Wechselhilfe + Kündigungsvorlage. Fehlt die Tabelle, zeigt die App einen Hinweis statt abzustürzen (`OPTIONAL` in `loadAll`).
+- Folgeaufgaben (`supabase/003_folgeaufgaben.sql`): `tasks.next_task_id`, `chained` (wartet auf Vorgänger; wartend = `done_at` gesetzt), `after_days`. Wäsche waschen (beide) → aufhängen (Müßmaus) → abhängen (Püßmaus, +1 Tag). Partner-Push nennt "Jetzt bist du dran".
 - Noch offen: echte Push-Benachrichtigungen bei geschlossener App (Supabase Edge Function + Web Push/VAPID), Kalender-Abo statt Einzel-.ics, Futter/Rezepte-Modul.
 
 ## Aufbau `app/`

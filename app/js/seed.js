@@ -8,8 +8,9 @@ export const SEED = {
     { name: 'Pflanzen gießen', points: 5, minutes: 3, assignee: 'm', repeat_days: 4, due: addDays(1) },
     { name: 'Kühlschrank & Vorrat checken', points: 5, minutes: 5, assignee: 'b', repeat_days: 7, due: addDays(2) },
     { name: 'Wäsche waschen', points: 10, minutes: 5, assignee: 'b', repeat_days: 3, due: addDays(0) },
-    { name: 'Wäsche aufhängen', points: 10, minutes: 10, assignee: 'p', repeat_days: 3, due: addDays(0) },
-    { name: 'Wäsche abhängen & falten', points: 10, minutes: 10, assignee: 'b', repeat_days: 3, due: addDays(1) },
+    // Kette: Wäsche waschen → aufhängen (Müßmaus) → abhängen (Püßmaus), siehe CHAINS
+    { name: 'Wäsche aufhängen', points: 10, minutes: 10, assignee: 'm', chained: true, after_days: 0, done_at: new Date().toISOString() },
+    { name: 'Wäsche abhängen', points: 10, minutes: 10, assignee: 'p', chained: true, after_days: 1, done_at: new Date().toISOString() },
     { name: 'Wohnung saugen', points: 20, minutes: 25, assignee: 'p', repeat_days: 7, due: addDays(2) },
     { name: 'Küche wischen', points: 15, minutes: 15, assignee: 'b', repeat_days: 7, due: addDays(3) },
     { name: 'Bad putzen', points: 30, minutes: 35, assignee: 'p', repeat_days: 7, due: addDays(4), heavy: true },
@@ -51,6 +52,9 @@ export const SEED = {
     { emoji: '🔑', title: 'Ersatzschlüssel', body: 'Wer hat welchen Schlüssel?' },
   ],
 };
+
+// Folgeaufgaben, die nach dem Anlegen per Name verknüpft werden: [Vorgänger, Nachfolger]
+export const CHAINS = [['Wäsche waschen', 'Wäsche aufhängen'], ['Wäsche aufhängen', 'Wäsche abhängen']];
 
 // Gerichte für "Aus dem Vorrat kochbar" (Namen müssen zu Vorratsartikeln passen).
 // Wird mit dem Rezept-Modul später durch echte Rezepte ersetzt.
