@@ -1,7 +1,7 @@
 // Datenschicht: dieselbe Schnittstelle für Supabase (echt) und Demo-Modus (localStorage).
 import { SUPABASE_URL, SUPABASE_KEY } from '../config.js';
 
-export const TABLES = ['shopping_items', 'stock_items', 'notes', 'diary', 'tasks', 'task_log', 'rewards', 'baby_todos'];
+export const TABLES = ['shopping_items', 'stock_items', 'notes', 'diary', 'tasks', 'task_log', 'rewards', 'baby_todos', 'contracts'];
 export const DEMO = !SUPABASE_URL || !SUPABASE_KEY || new URLSearchParams(location.search).has('demo');
 
 const today = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD in lokaler Zeit
@@ -16,6 +16,7 @@ const DEFAULTS = {
   task_log: () => ({ kind: 'task', thanked: false, done_at: new Date().toISOString() }),
   rewards: () => ({ emoji: '🎁', cost: 250, redeemed_count: 0 }),
   baby_todos: () => ({ hint: '', due_label: '', urgent: false, done: false, sort: 0 }),
+  contracts: () => ({ category: 'sonstiges', provider: '', owner: 'g', cost: 0, billing: 'monat', end_date: null, notice_months: 1, renewal_months: 0, remind_weeks: 6, price_until: null, customer_no: '', note: '' }),
 };
 
 export async function createDb() {
@@ -48,9 +49,9 @@ async function supaDb() {
     async insert(t, row) { return ok(await sb.from(t).insert(Array.isArray(row) ? row : [row], { defaultToNull: false }).select()); },
     async update(t, id, patch) { ok(await sb.from(t).update(patch).eq('id', id)); },
     async remove(t, id) { ok(await sb.from(t).delete().eq('id', id)); },
-    onChange(cb) {
+    onChange(cb, skip = []) {
       const ch = sb.channel('milzmaeuse');
-      [...TABLES, 'households', 'members'].forEach(t =>
+      [...TABLES, 'households', 'members'].filter(t => !skip.includes(t)).forEach(t =>
         ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, p => cb(t, p)));
       ch.subscribe();
     },

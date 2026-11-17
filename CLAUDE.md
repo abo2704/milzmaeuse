@@ -6,7 +6,9 @@ Baby kommt im Juni 2027. Sprache der App: Deutsch, verspielt mit Mäuse-Wortspie
 ## Status
 - `entwurf/index.html`: ursprünglicher Design-Entwurf (statisch, nur Referenz).
 - **MVP in `app/`** (fertig, getestet im Demo-Modus): Login per E-Mail + Passwort (E-Mail-Vorlagen sind im Supabase-Free-Plan ohne eigenes SMTP nicht editierbar, daher kein OTP-Code; "Confirm email" aus), Haushalt gründen/beitreten (Einladungscode), Heute, Aufgaben + Gamification + Lob + Danke-Pfote, Käseladen/Wochenziel, Einkaufsliste (Gang-Erkennung), Vorrat (knapp → Liste, kochbar), Mauseloch-Infos, Tagebuch, Baby-Checkliste, Geburtstermin.
-- Noch offen: Konten einrichten (siehe `EINRICHTUNG.md`), echte Push-Benachrichtigungen (Supabase Edge Function + Web Push/VAPID), Kalender-ICS, Futter/Rezepte-Modul, Verträge-Modul.
+- Live unter https://abo2704.github.io/milzmaeuse/ (Supabase-Projekt azcsltcyybjpiflbnrhe). Deploy: Nutzer committet + pusht per GitHub Desktop.
+- Verträge-Modul (`js/contracts.js`, Tabelle aus `supabase/002_vertraege.sql`): Fristberechnung, Mausefalle auf "Heute", .ics-Download, Wechselhilfe + Kündigungsvorlage. Fehlt die Tabelle, zeigt die App einen Hinweis statt abzustürzen (`OPTIONAL` in `loadAll`).
+- Noch offen: echte Push-Benachrichtigungen bei geschlossener App (Supabase Edge Function + Web Push/VAPID), Kalender-Abo statt Einzel-.ics, Futter/Rezepte-Modul.
 
 ## Aufbau `app/`
 - Kein Build-Schritt, kein Node nötig: Vanilla-JS-Module, supabase-js per CDN (gepinnt). Hosting: GitHub Pages via `.github/workflows/pages.yml` (veröffentlicht den Ordner `app/`).

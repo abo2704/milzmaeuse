@@ -103,6 +103,7 @@
 <!-- HEUTE -->
 <section class="view on" id="v-heute">
   <div id="away"></div>
+  <div id="trap"></div>
   <h2 class="sec">Gemeinsames Wochenziel</h2>
   <button class="card goal" id="goal">
     <svg class="paws" viewBox="0 0 120 120" aria-hidden="true"><use href="#paw" x="0" y="50" width="34" height="34" color="#3A2A00"/><use href="#paw" x="40" y="22" width="34" height="34" color="#3A2A00"/><use href="#paw" x="80" y="-4" width="34" height="34" color="#3A2A00"/></svg>
@@ -114,7 +115,7 @@
 
   <div class="stats">
     <div class="stat"><b id="s-streak">0</b><span>Tapser am Stück</span></div>
-    <div class="stat"><b id="s-week">0</b><span>erledigt diese Woche</span></div>
+    <button class="stat" id="week-done"><b id="s-week">0</b><span>erledigt diese Woche ›</span></button>
     <div class="stat"><b id="s-trend">–</b><span>ggü. Vorwoche</span></div>
   </div>
 
@@ -200,6 +201,16 @@
 <section class="view" id="v-mehr">
   <h2 class="sec">Mauseloch · gemeinsame Infos</h2>
   <div class="notes" id="notes"></div>
+
+  <h2 class="sec">Verträge 📑 <span class="r"><button id="add-contract">+ Neu</button></span></h2>
+  <div class="card" id="contract-sum"></div>
+  <div class="chips" id="c-chips" style="margin-top:10px">
+    <button class="chip on" data-f="all">Alle</button>
+    <button class="chip" data-f="g">Gemeinsam</button>
+    <button class="chip" data-f="p">Püßmaus</button>
+    <button class="chip" data-f="m">Müßmaus</button>
+  </div>
+  <div class="card flush" id="contracts" style="margin-top:10px"></div>
 
   <h2 class="sec">Mäuse-Momente 📖 <span class="r muted">unser Tagebuch</span></h2>
   <form class="card" id="f-diary" autocomplete="off">

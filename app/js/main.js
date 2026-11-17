@@ -1,5 +1,6 @@
 import { createDb, DEMO, TABLES } from './db.js';
 import { SEED, DISHES } from './seed.js';
+import { CATS, QUICK, monthly, contractStatus, statusTag, fmtDate, contractIcs, HELP, letter } from './contracts.js';
 import { PRAISE, PRAISE_BIG, PARTNER, OVERDUE, pick, fill, levelOf, AISLES, guessAisle } from './texts.js';
 
 /* ============ Helfer ============ */
@@ -58,7 +59,7 @@ function sheet({ title, fields, values = {}, saveLabel = 'Speichern', onSave, on
     if (fd.type === 'checkbox') return `<div class="field cb"><input type="checkbox" id="${id}" name="${fd.k}" ${v ? 'checked' : ''}><label for="${id}">${fd.label}</label></div>`;
     if (fd.type === 'select') return `<div class="field"><label for="${id}">${fd.label}</label><select id="${id}" name="${fd.k}">${fd.options.map(([ov, ol]) => `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`).join('')}</select></div>`;
     if (fd.type === 'textarea') return `<div class="field"><label for="${id}">${fd.label}</label><textarea id="${id}" name="${fd.k}" placeholder="${esc(fd.ph || '')}">${esc(v)}</textarea></div>`;
-    return `<div class="field"><label for="${id}">${fd.label}</label><input id="${id}" name="${fd.k}" type="${fd.type || 'text'}" value="${esc(v)}" ${fd.req ? 'required' : ''} ${fd.type === 'number' ? 'inputmode="decimal" step="any" min="0"' : ''} placeholder="${esc(fd.ph || '')}" ${fd.max ? `maxlength="${fd.max}"` : ''}></div>`;
+    return `<div class="field"><label for="${id}">${fd.label}</label><input id="${id}" name="${fd.k}" type="${fd.type === 'number' ? 'text' : fd.type || 'text'}" value="${esc(fd.type === 'number' ? String(v).replace('.', ',') : v)}" ${fd.req ? 'required' : ''} ${fd.type === 'number' ? 'inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" title="Zahl, z. B. 89,90"' : ''} placeholder="${esc(fd.ph || '')}" ${fd.max ? `maxlength="${fd.max}"` : ''}></div>`;
   };
   const rows = fields.map(fd => Array.isArray(fd) ? `<div class="grid2">${fd.map(f).join('')}</div>` : f(fd)).join('');
   form.innerHTML = `<h3>${title}</h3>${rows}<div class="sheet-actions">
@@ -71,7 +72,7 @@ function sheet({ title, fields, values = {}, saveLabel = 'Speichern', onSave, on
     fields.flat().forEach(fd => {
       const el = form.elements[fd.k];
       let v = fd.type === 'checkbox' ? el.checked : el.value.trim();
-      if (fd.type === 'number') v = v === '' ? 0 : Number(v.replace(',', '.'));
+      if (fd.type === 'number') v = v === '' ? 0 : Number(v.replace(',', '.')) || 0;
       if (fd.type === 'select' && v === 'null') v = null;
       if (fd.type === 'select' && fd.num && v !== null) v = Number(v);
       out[fd.k] = v;
@@ -84,13 +85,33 @@ function sheet({ title, fields, values = {}, saveLabel = 'Speichern', onSave, on
     if (a === 'cancel') dlg.close();
     if (a === 'del' && confirm('Wirklich löschen?')) { await act(onDelete); dlg.close(); }
   };
+  if (dlg.open) dlg.close();
   dlg.showModal();
 }
 $('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') $('#sheet').close(); });
 
+// Nur-Lesen-Ansicht im selben Bottom-Sheet. actions: [{label, cls, onClick}]
+function infoSheet(title, html, actions = []) {
+  const dlg = $('#sheet'), form = $('#sheet-form');
+  form.innerHTML = `<h3>${title}</h3><div class="info">${html}</div><div class="sheet-actions">
+    ${actions.map((a, i) => `<button type="button" class="btn ${a.cls || 'soft'}" data-i="${i}">${a.label}</button>`).join('')}
+    <button type="button" class="btn ${actions.length ? 'soft' : 'pink'}" data-a="close">Schließen</button></div>`;
+  form.onsubmit = e => e.preventDefault();
+  form.onclick = async e => {
+    if (e.target.closest('[data-a=close]')) return dlg.close();
+    const b = e.target.closest('[data-i]'); if (b) await act(() => actions[b.dataset.i].onClick());
+  };
+  if (dlg.open) dlg.close();
+  dlg.showModal();
+}
+
 /* ============ Laden & Live-Sync ============ */
 async function loadAll() {
-  const [hh, mem, ...lists] = await Promise.all([db.household(), db.members(), ...TABLES.map(t => db.list(t))]);
+  // Tabellen aus späteren Erweiterungen dürfen fehlen, bis das SQL in Supabase ausgeführt wurde
+  const OPTIONAL = ['contracts'];
+  S.missing = [];
+  const safeList = t => db.list(t).catch(e => { if (OPTIONAL.includes(t)) { S.missing.push(t); return []; } throw e; });
+  const [hh, mem, ...lists] = await Promise.all([db.household(), db.members(), ...TABLES.map(safeList)]);
   S.household = hh; S.members = mem;
   TABLES.forEach((t, i) => (S[t] = lists[i]));
 }
@@ -204,7 +225,7 @@ async function startApp() {
   renderAll();
   if (started) return;
   started = true;
-  db.onChange(onChange);
+  db.onChange(onChange, S.missing);
   if (DEMO) {
     $('#demo-banner').hidden = false; $('#demo-who').hidden = false;
   } else {
@@ -228,7 +249,7 @@ function renderAll() {
   if (!S.household) return;
   $('#greet').textContent = `Moin ${NAME(S.me)} 🐾`;
   $$('#demo-who button').forEach(x => x.classList.toggle('on', x.dataset.who === S.me));
-  renderHeute(); renderTasks(); renderRewards(); renderShop(); renderStock(); renderNotes(); renderDiary(); renderBaby(); renderSettings();
+  renderHeute(); renderTasks(); renderRewards(); renderShop(); renderStock(); renderNotes(); renderContracts(); renderDiary(); renderBaby(); renderSettings();
 }
 
 const pointLogs = () => S.task_log.filter(l => l.kind !== 'reward');
@@ -293,6 +314,9 @@ function renderHeute() {
     $('#away').innerHTML = `<h2 class="sec">Während du weg warst</h2><div class="card away"><b>${esc(who)} hat ${awayInfo.length} ${awayInfo.length === 1 ? 'Aufgabe' : 'Aufgaben'} erledigt (+${pts} 🧀)</b><p class="small" style="margin:4px 0 12px;font-weight:700">${names}. Was für eine Spitzenmaus!</p><div class="row"><button class="btn pink" id="away-thx">💛 Danke-Pfote</button><button class="btn soft" id="away-x" style="width:auto">OK</button></div></div>`;
   } else $('#away').innerHTML = '';
 
+  const traps = S.contracts.map(c => [c, contractStatus(c)]).filter(([, s]) => s.kind === 'trap').sort((a, b) => a[1].days - b[1].days);
+  $('#trap').innerHTML = traps.length ? `<h2 class="sec">Achtung, Mausefalle! 🪤</h2>` + traps.map(([c, s]) => `<button class="card row" data-contract="${c.id}" style="width:100%;text-align:left;background:var(--red-soft);border:0"><span style="font-size:26px">🪤</span><span class="t" style="white-space:normal"><b style="white-space:normal">${esc(c.name)} schnappt ${s.days <= 0 ? 'heute' : s.days === 1 ? 'morgen' : `in ${s.days} Tagen`} zu</b><small>Kündigen/Wechseln bis ${fmtDate(s.deadline)} – tippen für Wechselhilfe</small></span></button>`).join('') : '';
+
   const mem = [[addDays(td, -365), 'Heute vor einem Jahr'], [addDays(td, -30), 'Heute vor einem Monat'], [addDays(td, -7), 'Heute vor einer Woche']]
     .map(([d, l]) => [S.diary.find(x => x.day === d), l]).find(([x]) => x);
   $('#memory').innerHTML = mem ? `<h2 class="sec">${mem[1]} 📖</h2><div class="card memory"><div class="small muted" style="font-weight:800">${fmtDay(mem[0].day)} · ${esc(NAME(mem[0].created_by))}</div><p style="font-weight:800;margin-top:4px">${esc(mem[0].emoji)} ${esc(mem[0].body)}</p></div>` : '';
@@ -303,6 +327,23 @@ function renderHeute() {
   $('#baby-date').textContent = parseDay(dueDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
   $('#shoes').innerHTML = Array.from({ length: 40 }, (_, i) => `<svg style="color:${i < ssw ? 'var(--pink-strong)' : 'var(--line)'}"><use href="#shoe"/></svg>`).join('');
 }
+$('#week-done').onclick = () => {
+  const ws = weekStart();
+  const logs = pointLogs().filter(l => new Date(l.done_at) >= ws).sort((a, b) => b.done_at.localeCompare(a.done_at));
+  const days = [...new Set(logs.map(l => dayOf(l.done_at)))];
+  const time = iso => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const per = w => logs.filter(l => l.by_who === w && l.kind === 'task').length;
+  const html = logs.length
+    ? `<p class="small muted" style="font-weight:700;margin-bottom:6px">Püßmaus ${per('p')} · Müßmaus ${per('m')} Aufgaben</p>`
+      + days.map(d => {
+        const dl = logs.filter(l => dayOf(l.done_at) === d);
+        return `<div class="aisle row" style="justify-content:space-between">${d === today() ? 'Heute' : parseDay(d).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'short' })}<span style="color:var(--cheese-deep)">+${dl.reduce((a, l) => a + l.points, 0)} 🧀</span></div>`
+          + dl.map(l => `<div class="log"><span class="av ${l.by_who}">${l.by_who === 'p' ? 'P' : 'M'}</span><div class="t"><b>${l.kind === 'bonus' ? '💛 ' : ''}${esc(l.task_name)}</b></div><time>${time(l.done_at)}</time><span class="pts">+${l.points}</span></div>`).join('');
+      }).join('')
+    : '<p class="empty">Diese Woche ist noch nichts erledigt. Zeit für einen Quick Win! ⚡</p>';
+  infoSheet('Erledigt diese Woche 🧀', html);
+};
+
 $('#v-heute').addEventListener('click', async e => {
   if (e.target.closest('#away-x')) { awayInfo = null; renderHeute(); }
   if (e.target.closest('#away-thx')) {
@@ -611,6 +652,101 @@ function showPane(p) {
   $$('#v-einkauf .pane').forEach(x => x.classList.toggle('on', x.id === 'p-' + p));
 }
 $('#seg').onclick = e => { const b = e.target.closest('button'); if (b) showPane(b.dataset.p); };
+
+/* ---------- Verträge ---------- */
+const OWNER = { g: 'Gemeinsam', p: 'Püßmaus', m: 'Müßmaus' };
+const euro = n => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+let cFilter = 'all';
+function renderContracts() {
+  if (S.missing?.includes('contracts')) {
+    $('#contract-sum').innerHTML = '<p class="small" style="font-weight:700">🛠️ Für die Verträge muss einmalig <b>supabase/002_vertraege.sql</b> im Supabase SQL Editor ausgeführt werden. Danach die App neu laden.</p>';
+    $('#contracts').innerHTML = ''; $('#c-chips').hidden = true; $('#add-contract').hidden = true; return;
+  }
+  $('#c-chips').hidden = false; $('#add-contract').hidden = false;
+  const list = S.contracts.filter(c => cFilter === 'all' || c.owner === cFilter)
+    .map(c => [c, contractStatus(c)]).sort((a, b) => (a[1].days ?? 1e9) - (b[1].days ?? 1e9) || a[0].name.localeCompare(b[0].name));
+  const sum = list.reduce((a, [c]) => a + monthly(c), 0);
+  const existing = new Set(S.contracts.map(c => c.name.toLowerCase()));
+  const quick = QUICK.filter(([, n]) => !existing.has(n.toLowerCase()));
+  $('#contract-sum').innerHTML = `<div class="row"><span class="t"><b>Fixkosten ${cFilter === 'all' ? 'gesamt' : OWNER[cFilter]}</b><small>${list.length} ${list.length === 1 ? 'Vertrag' : 'Verträge'} · ${euro(sum * 12)} pro Jahr</small></span><b style="font-size:20px">${euro(sum)}<span class="small muted">/Mon.</span></b></div>`
+    + (quick.length ? `<div class="aisle" style="margin:12px 0 6px">Schnell anlegen</div><div class="chips" style="flex-wrap:wrap">${quick.map(([k, n]) => `<button class="chip" data-quick="${k}" data-name="${esc(n)}">${CATS[k].e} ${esc(n)}</button>`).join('')}</div>` : '');
+  $('#contracts').innerHTML = list.map(([c]) => {
+    const [cls, txt] = statusTag(c);
+    return `<div class="contract" data-contract="${c.id}" style="cursor:pointer"><span style="font-size:24px;width:32px;text-align:center">${CATS[c.category]?.e || '📄'}</span><div class="t"><b>${esc(c.name)}</b><small>${esc(c.provider || OWNER[c.owner])} · ${euro(monthly(c))}/Mon.${c.owner !== 'g' ? ' · ' + OWNER[c.owner] : ''}</small></div><span class="tag ${cls}">${esc(txt)}</span></div>`;
+  }).join('') || '<p class="empty">Noch keine Verträge. Oben einfach antippen und loslegen.</p>';
+}
+const CONTRACT_FIELDS = [
+  [{ k: 'category', label: 'Art', type: 'select', options: Object.entries(CATS).map(([k, v]) => [k, `${v.e} ${v.n}`]) },
+   { k: 'owner', label: 'Für wen?', type: 'select', options: Object.entries(OWNER) }],
+  { k: 'name', label: 'Bezeichnung', req: true, ph: 'z. B. Strom' },
+  { k: 'provider', label: 'Anbieter', ph: 'z. B. Stadtwerke' },
+  [{ k: 'cost', label: 'Kosten €', type: 'number' },
+   { k: 'billing', label: 'pro', type: 'select', options: [['monat', 'Monat'], ['quartal', 'Quartal'], ['jahr', 'Jahr']] }],
+  [{ k: 'end_date', label: 'Laufzeit endet am', type: 'date' },
+   { k: 'notice_months', label: 'Kündigungsfrist', type: 'select', num: true, options: [[0, 'keine'], [1, '1 Monat'], [2, '2 Monate'], [3, '3 Monate'], [6, '6 Monate']] }],
+  [{ k: 'renewal_months', label: 'Danach', type: 'select', num: true, options: [[0, 'monatlich kündbar'], [12, '+12 Monate'], [24, '+24 Monate'], [1, '+1 Monat']] },
+   { k: 'remind_weeks', label: 'Erinnern', type: 'select', num: true, options: [[2, '2 Wochen vorher'], [4, '4 Wochen vorher'], [6, '6 Wochen vorher'], [8, '8 Wochen vorher'], [12, '3 Monate vorher']] }],
+  { k: 'price_until', label: 'Preisgarantie bis (optional)', type: 'date' },
+  { k: 'customer_no', label: 'Kunden-/Vertragsnummer (optional)' },
+  { k: 'note', label: 'Notiz', type: 'textarea', ph: 'z. B. Login-Hinweis, Zählernummer …' },
+];
+const cleanContract = v => ({ ...v, end_date: v.end_date || null, price_until: v.price_until || null });
+function newContract(values = {}) {
+  sheet({ title: 'Neuer Vertrag', fields: CONTRACT_FIELDS, saveLabel: 'Anlegen',
+    values: { owner: 'g', billing: 'monat', notice_months: 1, renewal_months: 0, remind_weeks: 6, ...values },
+    onSave: v => db.insert('contracts', cleanContract(v)) });
+}
+function editContract(c) {
+  sheet({ title: 'Vertrag bearbeiten', fields: CONTRACT_FIELDS, values: c,
+    onSave: v => db.update('contracts', c.id, cleanContract(v)), onDelete: () => db.remove('contracts', c.id) });
+}
+function downloadIcs(c) {
+  const ics = contractIcs(c);
+  if (!ics) return toast('Erst ein Laufzeitende eintragen 📅');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  a.download = `milzmaeuse-${c.name.replace(/[^\wäöüÄÖÜß-]+/g, '-')}.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  toast('📅 Kalenderdatei erstellt – öffnen und „Hinzufügen“ tippen');
+}
+function contractHelp(c) {
+  const txt = letter(c);
+  infoSheet(`🔁 Wechselhilfe: ${esc(c.name)}`,
+    HELP[CATS[c.category]?.help || 'abo'] + `<h5>Kündigungsvorlage</h5><pre>${esc(txt)}</pre><p class="small muted">Allgemeine Hinweise, keine Rechtsberatung. Im Zweifel in die Vertragsunterlagen schauen.</p>`,
+    [{ label: '📋 Vorlage kopieren', cls: 'pink', onClick: async () => { await navigator.clipboard.writeText(txt); toast('Kündigungsvorlage kopiert 📋'); } }]);
+}
+function showContract(c) {
+  const s = contractStatus(c), [cls, txt] = statusTag(c), cat = CATS[c.category] || CATS.sonstiges;
+  const row = (k, v) => v ? `<div class="row" style="justify-content:space-between;gap:12px"><span class="muted">${k}</span><b style="text-align:right">${v}</b></div>` : '';
+  const priceSoon = c.price_until && c.price_until >= today() && daysBetween(today(), c.price_until) <= 60;
+  infoSheet(`${cat.e} ${esc(c.name)}`,
+    `<span class="tag ${cls}" style="align-self:flex-start">${esc(txt)}</span>`
+    + row('Anbieter', esc(c.provider)) + row('Für', OWNER[c.owner])
+    + row('Kosten', `${euro(Number(c.cost))} / ${{ monat: 'Monat', quartal: 'Quartal', jahr: 'Jahr' }[c.billing]}`)
+    + row('Laufzeit bis', s.end ? fmtDate(s.end) : '') + row('Kündigen bis', s.deadline ? fmtDate(s.deadline) : '')
+    + row('Erinnerung ab', s.remind ? fmtDate(s.remind) : '') + row('Preisgarantie bis', c.price_until ? fmtDate(c.price_until) : '')
+    + row('Kunden-Nr.', esc(c.customer_no))
+    + (priceSoon ? '<p class="small" style="color:var(--cheese-deep);font-weight:800">⚠️ Preisgarantie endet bald – auf Preiserhöhung achten (Sonderkündigungsrecht!).</p>' : '')
+    + (c.note ? `<pre>${esc(c.note)}</pre>` : ''),
+    [{ label: '🔁 Wechselhilfe', onClick: () => contractHelp(c) },
+     { label: '📅 Kalender', onClick: () => downloadIcs(c) },
+     { label: '✏️', onClick: () => editContract(c) }]);
+}
+$('#add-contract').onclick = () => newContract();
+$('#c-chips').onclick = e => {
+  const c = e.target.closest('.chip'); if (!c) return; cFilter = c.dataset.f;
+  $$('#c-chips .chip').forEach(x => x.classList.toggle('on', x === c)); renderContracts();
+};
+$('#contract-sum').onclick = e => {
+  const q = e.target.closest('[data-quick]'); if (!q) return;
+  const k = q.dataset.quick;
+  newContract({ category: k, name: q.dataset.name, owner: ['handy', 'streaming'].includes(k) ? S.me : 'g', ...CATS[k].def });
+};
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-contract]'); if (!c) return;
+  const ct = S.contracts.find(x => x.id === c.dataset.contract); if (ct) showContract(ct);
+});
 
 /* ---------- Mauseloch: Infos ---------- */
 const NOTE_FIELDS = [[{ k: 'emoji', label: 'Emoji', max: 4, def: '📌' }, { k: 'pinned', label: 'Oben anpinnen', type: 'checkbox' }], { k: 'title', label: 'Titel', req: true, ph: 'z. B. Müllabfuhr' }, { k: 'body', label: 'Inhalt', type: 'textarea', ph: 'Alles, was sonst im Chat verloren geht …' }];

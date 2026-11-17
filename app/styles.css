@@ -74,6 +74,12 @@ h2.sec .r button{color:var(--pink-strong);font-weight:900}
 /* stats */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px 6px;text-align:center}
+button.stat{cursor:pointer;width:100%}
+.info{display:flex;flex-direction:column;gap:6px;font-weight:600;line-height:1.45}
+.info h5{font-size:14px;font-weight:900;margin-top:8px}
+.info ol,.info ul{padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.info pre{white-space:pre-wrap;font:inherit;font-size:14px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+.info a{color:var(--pink-strong);font-weight:900}
 .stat b{display:block;font-size:22px;font-weight:900;letter-spacing:-.02em}
 .stat span{font-size:11px;font-weight:700;color:var(--muted)}
 .streak{display:flex;justify-content:space-between;margin-top:12px}
