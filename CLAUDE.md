@@ -40,3 +40,20 @@ Heute · Aufgaben (Gamification) · Einkauf + Vorratskammer · Futter (Essenspla
 - Verträge: Strom, Gas, Internet, Hausrat, Haftpflicht (gemeinsam) + personenbezogene (Handy, Amazon Prime), filterbar. Kündigungsfristen → Erinnerungen + Wechselhilfe.
 - Erlebnistagebuch "Mäuse-Momente" mit "Heute vor einem Monat".
 - Keine Vertragsnummern/Zugangsdaten in Chat oder Code; Daten nur in Supabase, Schlüssel nie committen.
+
+# Kraftkladde – Trainings-App (André persönlich)
+
+Eigene PWA in `app/kraft/` → live unter https://abo2704.github.io/milzmaeuse/kraft/ (wird mit `app/` veröffentlicht).
+Bauplan: `docs/kraftkladde-steckbrief.md` (Stufe 1 fertig; nächste: Workout-Timer, Coach, Ziele/Strava, Extras).
+- André ist primär Läufer (Garmin/Strava), macht Ganzkörper-Kraft (8–12 Wdh.) + Hybrid (Deadly Dozen, evtl. Hyrox).
+- Nur für André, **keine Supabase-Anbindung**: Daten in localStorage (`kraftkladde-v2`), Backup/Restore JSON + CSV-Export. Repo ist öffentlich → **keine persönlichen Trainingsdaten committen**.
+- Datenmodell: Übung `{group (Bewegungsmuster), equip (lh/kh/kb/ma/kg/band/cardio/sonst), fields}`; fields aus `w` kg, `r` Wdh., `d` m, `t` s, `c` kcal, `b` Miniband-Index (BANDS); leere Liste = nur abhaken. `equip:'kg'` → Gewicht = Zusatzgewicht (leer = Körpergewicht), kein 1RM/Volumen. Kurzhantel = kg pro Hand.
+- Routine = Plätze `{slot, studio, home, sets, link}` (link = Supersatz mit nächstem Platz). Training `{kind: kraft|hybrid|lauf, location: studio|home, entries[{exId, fields, group (Supersatz-ID), slot, sets}]}`; `untracked` = Termin ohne Details; Läufe `run:{km, sec}`; `estimates` = geschätzte Monate.
+- Supersatz: Pause erst nach der letzten Übung der Runde, sonst Sprung zur nächsten Übung.
+- Gym-Run-Import (`js/import.js`): Satzart steht in Spalte **Book** (1 Gewicht, 6 Körpergewicht, 3 Zeit/Strecke in Min./km); Klimmzüge minus Körpergewicht, Kurzhantel ÷2 (per Seed `importHalve`/`importBodyweight`, in Vorschau umschaltbar); Supersätze aus zeitlicher Verzahnung erkannt.
+- Übungswissen (`js/knowledge.js`): Wissenskarte je Seed-Übung (c Technik, f Fehler, l Läufer-Nutzen, e/h leichter/schwerer als IDs, optional rec); `recommendation()` leitet sonst aus Muster/Gerät ab. Neue Seed-Übungen immer mit Karte + ggf. `MUSCLE_OVERRIDES` anlegen (Prüfskript: alle IDs haben Karte, Verweise existieren).
+- Dateien: `js/app.js` UI, `js/store.js`, `js/exercises.js` (105 Seeds mit Gym-Run-Aliasen, Muskeln), `js/stats.js`, `js/chart.js`, `js/import.js`, `js/util.js`.
+- Design: Grafit + Salbei/Waldgrün; Gold nur für Rekorde. Arten-Farben `--k-kraft/--k-hybrid/--k-lauf` = Aqua/Orange/Blau aus der validierten Referenzpalette (dataviz-Skill, CVD-geprüft) – nicht durch Salbei-Töne ersetzen (Grün/Orange war für Rot-Grün-Schwäche nicht unterscheidbar).
+- Fortschritt-Tab (`js/progress.js`): Konstanz (gestapelte Balken, Wochenziel `settings.weeklyGoal`, geschätzte Monate schraffiert), Kraftindex (Ø relative Steigerung der Hauptkennzahl je Übung), größte Steigerungen, Bewegungsmuster + Verhältnisse, Balance-Hinweise (Drücken/Ziehen, Knie/Hüfte, einbeinig, seitlicher Rumpf, Gesäß, Waden/Fuß), Muskelkarte (Zuordnung `musclesOf()` in `exercises.js`: Hauptmuskel 1, Hilfsmuskel ½). Kein 1RM bei Körpergewicht, Core, Fuß/Reha, Mobilität, Ausdauer.
+- Bei Änderungen `VERSION` in `app/kraft/sw.js` UND `APP_VERSION` in `app/kraft/js/app.js` hochzählen.
+- Der Service Worker der Haushalts-App ignoriert `/kraft/` und löscht nur `mm-`-Caches (Kraftkladde nutzt `kk-`).
