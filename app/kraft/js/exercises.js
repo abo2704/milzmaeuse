@@ -46,7 +46,7 @@ export const SEED_EXERCISES = [
   E('step-ups', 'Step-ups', 'Kniedominant', 'kh', WR, { perSide: true }),
   // Hüftdominant
   E('rdl', 'Rumänisches Kreuzheben', 'Hüftdominant', 'lh', WR, { aliases: ['Romanian Deadlift'] }),
-  E('kb-deadlift', 'Kettlebell Deadlift', 'Hüftdominant', 'kb', WR),
+  E('kb-deadlift', 'Kettlebell Deadlift', 'Hüftdominant', 'kb', WR, { note: 'Gewicht pro Kugel', importHalve: true }),
   E('kreuzheben-kh', 'Kreuzheben (Kurzhantel)', 'Hüftdominant', 'kh', WR, { aliases: ['Kreuzheben Kurzhantel'], importHalve: true }),
   E('kb-swings', 'Kettlebell Swings', 'Hüftdominant', 'kb', WR),
   E('hip-thrust', 'Hip Thrust', 'Hüftdominant', 'lh', WR),
