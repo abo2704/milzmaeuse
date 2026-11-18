@@ -4,7 +4,7 @@ import { SEED_EXERCISES, SEED_TEMPLATES } from './exercises.js';
 const KEY = 'kraftkladde-v2';
 export const db = { data: null };
 
-const defaults = () => ({ name: 'André', rest: 90, sound: true, vibrate: true, wakeLock: true, bodyweight: 72, location: 'studio' });
+const defaults = () => ({ name: 'André', rest: 90, weeklyGoal: 2, sound: true, vibrate: true, wakeLock: true, bodyweight: 72, location: 'studio' });
 
 function fresh() {
   return {

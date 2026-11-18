@@ -132,3 +132,62 @@ export const SEED_TEMPLATES = [
     I('Station 10', 'burpees', 'burpees', 2),
   ] },
 ];
+
+// ---------- Muskeln ----------
+// p = Hauptmuskeln (zählen voll), s = Hilfsmuskeln (zählen halb)
+export const MUSCLES = {
+  schultern: 'Schultern', brust: 'Brust', bizeps: 'Bizeps', trizeps: 'Trizeps', unterarme: 'Unterarme & Griff',
+  bauch: 'Bauch', seitbauch: 'Seitliche Rumpfmuskeln', ruecken_oben: 'Oberer Rücken', lat: 'Latissimus',
+  unterer_ruecken: 'Unterer Rücken', gesaess: 'Gesäß', quadrizeps: 'Oberschenkel vorn', beinbeuger: 'Oberschenkel hinten',
+  waden: 'Waden', fuss: 'Fuß & Sprunggelenk',
+};
+const M = (p, s = []) => ({ p, s });
+const GROUP_MUSCLES = {
+  'Kniedominant': M(['quadrizeps', 'gesaess'], ['bauch', 'waden']),
+  'Hüftdominant': M(['gesaess', 'beinbeuger'], ['unterer_ruecken', 'unterarme']),
+  'Drücken horizontal': M(['brust'], ['schultern', 'trizeps']),
+  'Drücken vertikal': M(['schultern'], ['trizeps', 'ruecken_oben', 'bauch']),
+  'Ziehen horizontal': M(['ruecken_oben', 'lat'], ['bizeps', 'schultern']),
+  'Ziehen vertikal': M(['lat'], ['bizeps', 'ruecken_oben', 'unterarme']),
+  'Core': M(['bauch', 'seitbauch'], ['unterer_ruecken']),
+  'Fuß & Reha': M(['fuss', 'waden']),
+  'Arme & Schultern': M(['bizeps'], ['unterarme']),
+  'Ganzkörper & Hybrid': M(['gesaess', 'quadrizeps'], ['schultern', 'bauch']),
+  'Ausdauer': M(['quadrizeps'], ['waden']),
+  'Mobilität': M([]),
+};
+const MUSCLE_OVERRIDES = {
+  'liegestuetze': M(['brust'], ['trizeps', 'schultern', 'bauch']),
+  'liegestuetz-griff': M(['brust'], ['trizeps', 'schultern', 'bauch']),
+  'curls-kh': M(['bizeps'], ['unterarme']),
+  'seitheben': M(['schultern']),
+  'face-pulls': M(['schultern', 'ruecken_oben']),
+  'trizeps-kabel': M(['trizeps']),
+  'farmers-carry': M(['unterarme', 'ruecken_oben'], ['seitbauch', 'bauch', 'waden']),
+  'offset-carry': M(['seitbauch', 'unterarme'], ['ruecken_oben', 'schultern']),
+  'suitcase-carry': M(['seitbauch', 'unterarme'], ['ruecken_oben']),
+  'ski-erg': M(['lat', 'trizeps'], ['bauch', 'schultern']),
+  'burpees': M(['brust', 'quadrizeps'], ['schultern', 'bauch']),
+  'kh-snatch': M(['gesaess', 'schultern'], ['beinbeuger', 'ruecken_oben']),
+  'wall-balls': M(['quadrizeps', 'schultern'], ['gesaess']),
+  'schlitten': M(['quadrizeps', 'gesaess'], ['waden']),
+  'sandbag-lunges': M(['quadrizeps', 'gesaess'], ['seitbauch']),
+  'ausfall-atw': M(['quadrizeps', 'gesaess'], ['seitbauch', 'schultern']),
+  'kb-around': M(['seitbauch', 'schultern'], ['bauch']),
+  'stuetz-ruder': M(['bauch', 'ruecken_oben'], ['seitbauch']),
+  'seitstuetz': M(['seitbauch'], ['schultern']),
+  'pallof': M(['seitbauch', 'bauch']),
+  'leg-raises': M(['bauch'], ['unterarme']),
+  'waden-1': M(['waden'], ['fuss']),
+  'einbeinstand': M(['fuss'], ['waden', 'gesaess']),
+  'monster-walk': M(['gesaess'], ['fuss']),
+  'glute-bridge': M(['gesaess'], ['beinbeuger']),
+  'hip-thrust': M(['gesaess'], ['beinbeuger']),
+  'rudergeraet': M(['ruecken_oben', 'quadrizeps'], ['lat', 'beinbeuger']),
+  'seilspringen': M(['waden', 'fuss']),
+  'rudern-band': M(['ruecken_oben'], ['bizeps']),
+  'schulter-kh-steh': M(['schultern'], ['trizeps', 'bauch']),
+};
+export function musclesOf(ex) {
+  return MUSCLE_OVERRIDES[ex.id] || ex.muscles || GROUP_MUSCLES[ex.group] || M([]);
+}

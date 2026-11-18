@@ -52,6 +52,7 @@ Bauplan: `docs/kraftkladde-steckbrief.md` (Stufe 1 fertig; nächste: Workout-Tim
 - Supersatz: Pause erst nach der letzten Übung der Runde, sonst Sprung zur nächsten Übung.
 - Gym-Run-Import (`js/import.js`): Satzart steht in Spalte **Book** (1 Gewicht, 6 Körpergewicht, 3 Zeit/Strecke in Min./km); Klimmzüge minus Körpergewicht, Kurzhantel ÷2 (per Seed `importHalve`/`importBodyweight`, in Vorschau umschaltbar); Supersätze aus zeitlicher Verzahnung erkannt.
 - Dateien: `js/app.js` UI, `js/store.js`, `js/exercises.js` (Seeds mit Gym-Run-Aliasen), `js/stats.js`, `js/chart.js`, `js/import.js`, `js/util.js`.
-- Design: Grafit + Salbei/Waldgrün, Arten-Farben `--k-kraft/--k-hybrid/--k-lauf`; Gold nur für Rekorde.
+- Design: Grafit + Salbei/Waldgrün; Gold nur für Rekorde. Arten-Farben `--k-kraft/--k-hybrid/--k-lauf` = Aqua/Orange/Blau aus der validierten Referenzpalette (dataviz-Skill, CVD-geprüft) – nicht durch Salbei-Töne ersetzen (Grün/Orange war für Rot-Grün-Schwäche nicht unterscheidbar).
+- Fortschritt-Tab (`js/progress.js`): Konstanz (gestapelte Balken, Wochenziel `settings.weeklyGoal`, geschätzte Monate schraffiert), Kraftindex (Ø relative Steigerung der Hauptkennzahl je Übung), größte Steigerungen, Bewegungsmuster + Verhältnisse, Balance-Hinweise (Drücken/Ziehen, Knie/Hüfte, einbeinig, seitlicher Rumpf, Gesäß, Waden/Fuß), Muskelkarte (Zuordnung `musclesOf()` in `exercises.js`: Hauptmuskel 1, Hilfsmuskel ½). Kein 1RM bei Körpergewicht, Core, Fuß/Reha, Mobilität, Ausdauer.
 - Bei Änderungen `VERSION` in `app/kraft/sw.js` UND `APP_VERSION` in `app/kraft/js/app.js` hochzählen.
 - Der Service Worker der Haushalts-App ignoriert `/kraft/` und löscht nur `mm-`-Caches (Kraftkladde nutzt `kk-`).

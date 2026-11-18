@@ -4,17 +4,19 @@ import { FIELDS, FIELD_ORDER, GROUPS, EQUIP, KINDS, BANDS, weightCol, sortFields
 import { METRICS, metricByKey, fmtMetric, exerciseSeries, computeRecords, bestOf, isBetter, workoutStats, setMetricFilter, metricAllowed } from './stats.js';
 import { lineChart, mountChart } from './chart.js';
 import { parseGymRun, buildImport } from './import.js';
+import { RANGES, rangeStart, summary, buckets, strengthIndex, topGains, setLoad, stackedBarsSVG, indexLineSVG, patternBarsHTML, balanceHTML, bodyMapHTML, balanceInsights, insightsHTML, mountTips } from './progress.js';
 import {
   $, esc, uid, norm, num, fmtNum, fmtKg, fmtTime, parseTime, fmtDist, dayKey, fmtDate, fmtDateLong, fmtShort,
   fmtClock, monthLabel, weekStart, daysAgo, relDay, pick,
 } from './util.js';
 
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.1.0';
 let D = load();
 save(); // Startdaten bzw. nachgezogene Übungen sofort sichern
 let tab = 'train';
 let exFilter = { q: '', group: '' };
 let installEvt = null;
+let progRange = 'm3';
 
 // ---------- Texte ----------
 const CHEERS = [
@@ -29,7 +31,14 @@ const TAGLINES = [
 
 // ---------- Helfer ----------
 const exById = id => D.exercises.find(e => e.id === id) || { id, name: 'Gelöschte Übung', group: 'Mobilität', equip: 'sonst', fields: ['w', 'r'], perSide: false, note: '' };
-setMetricFilter((exId, m) => !((m.key === 'e1rm' || m.key === 'vol') && exById(exId).equip === 'kg'));
+// Kein 1RM/Volumen bei Körpergewicht; kein 1RM bei Core, Fuß/Reha, Mobilität, Ausdauer (fachlich nicht sinnvoll)
+const NO_1RM = new Set(['Core', 'Fuß & Reha', 'Mobilität', 'Ausdauer']);
+setMetricFilter((exId, m) => {
+  const ex = exById(exId);
+  if ((m.key === 'e1rm' || m.key === 'vol') && ex.equip === 'kg') return false;
+  if (m.key === 'e1rm' && NO_1RM.has(ex.group)) return false;
+  return true;
+});
 const visibleExercises = () => D.exercises.filter(e => !e.archived);
 const measureLabel = (fs, ex) => {
   const f = sortFields(fs);
@@ -85,6 +94,7 @@ const ICON = {
   train: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6M6 6.5v11M18 6.5v11M21 9v6M6 12h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   history: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 10h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  dumbbell: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 9h8M8 12h8M8 15h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   more: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
 };
 
@@ -148,7 +158,7 @@ function confirmSheet({ title, text = '', ok, danger = false, onOk }) {
 function render() { renderTabs(); renderView(); renderRestbar(); syncWakeLock(); }
 
 function renderTabs() {
-  const tabs = [['train', 'Training', ICON.train], ['history', 'Chronik', ICON.history], ['exercises', 'Übungen', ICON.list], ['more', 'Mehr', ICON.more]];
+  const tabs = [['train', 'Training', ICON.train], ['history', 'Chronik', ICON.history], ['progress', 'Fortschritt', ICON.list], ['exercises', 'Übungen', ICON.dumbbell], ['more', 'Mehr', ICON.more]];
   $('#tabs').innerHTML = tabs.map(([k, l, i]) => `<button class="tab ${tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}" aria-label="${l}">${i}<span>${l}</span>${k === 'train' && D.active ? '<i class="live-dot"></i>' : ''}</button>`).join('');
 }
 
@@ -156,9 +166,11 @@ function renderView() {
   const v = $('#view');
   v.innerHTML = tab === 'train' ? (D.active ? workoutHTML() : homeHTML())
     : tab === 'history' ? historyHTML()
+    : tab === 'progress' ? progressHTML()
     : tab === 'exercises' ? exercisesHTML()
     : moreHTML();
   mountChart(v);
+  mountTips(v);
 }
 
 // ---------- Kennzahlen Start ----------
@@ -685,6 +697,39 @@ function openEstimate(month) {
   });
 }
 
+// ---------- Fortschritt ----------
+function progressHTML() {
+  const from = rangeStart(progRange, D.workouts);
+  const goal = D.settings.weeklyGoal || 2;
+  const sm = summary(D.workouts, D.estimates, from, goal);
+  const bk = buckets(D.workouts, D.estimates, from, progRange);
+  const idx = strengthIndex(D.workouts, from, metricAllowed);
+  const gains = topGains(D.workouts, from, metricAllowed, id => exById(id).name);
+  const load = setLoad(D.workouts, from, exById);
+  const ins = balanceInsights(D.workouts, from, exById, load);
+  const viz = (title, sub, body, extra = '') => `<section class="card viz"><h2>${title}</h2>${sub ? `<p class="muted small viz-sub">${sub}</p>` : ''}${extra}${body}<div class="viz-tip" role="status"></div></section>`;
+  const pct = v => (v >= 0 ? '+' : '−') + fmtNum(Math.abs(v), 1) + ' %';
+  return `<header class="top"><h1>Fortschritt</h1></header>
+    <div class="chips seg">${Object.entries(RANGES).map(([k, v]) => `<button class="chip ${progRange === k ? 'on' : ''}" data-act="prog-range" data-k="${k}">${v}</button>`).join('')}</div>
+    <div class="tiles">
+      <div class="tile"><strong>${sm.trainings}</strong><span>Trainings${sm.est ? ' (inkl. ' + sm.est + ' geschätzt)' : ''}</span></div>
+      <div class="tile"><strong>${fmtNum(sm.perWeek, 1)}</strong><span>pro Woche</span></div>
+      <div class="tile"><strong>${idx.points.length ? (idx.points.at(-1).y >= 0 ? '+' : '−') + Math.round(Math.abs(idx.points.at(-1).y)) + ' %' : '–'}</strong><span>Kraft-Entwicklung</span></div>
+    </div>
+    ${viz('Konstanz', `${bk.monthly ? 'Einheiten pro Monat' : 'Einheiten pro Woche'} · Wochenziel ${goal}× Kraft/Hybrid erreicht in ${sm.goalWeeks} von ${sm.weeks} Wochen`,
+      stackedBarsSVG(bk, goal), legendHTML() + (bk.monthly && D.estimates.length ? '<p class="muted small"><i class="hatch-sw"></i>schraffiert = geschätzte Monate</p>' : ''))}
+    ${viz('Kraftentwicklung', idx.count ? `Durchschnitt aus ${idx.count} Übungen, jeweils verglichen mit ihrem ersten Wert im Zeitraum (1RM, sonst Wiederholungen)` : '',
+      idx.points.length > 1 ? indexLineSVG(idx.points) : '<p class="muted small">Sobald du Übungen mehrfach gemacht hast, siehst du hier deine Entwicklung.</p>')}
+    <section class="card"><h2>Größte Steigerungen</h2>
+      ${gains.length ? `<div class="gains">${gains.map(g => `<button class="gain" data-act="ex-open" data-id="${g.id}">
+        <span class="gain-n"><b>${esc(g.name)}</b><span class="muted small">${g.m.short}: ${fmtMetric(g.m.kind, g.first)} → ${fmtMetric(g.m.kind, g.best)}</span></span>
+        <span class="gain-p">↑ ${fmtNum(g.gain * 100, 0)} %</span></button>`).join('')}</div>` : '<p class="muted small">Noch keine Steigerungen im Zeitraum – oder alles auf gleichem Niveau.</p>'}
+    </section>
+    ${viz('Bewegungsmuster', 'Arbeitssätze je Muster', balanceHTML(load.patterns) + patternBarsHTML(load.patterns))}
+    <section class="card"><h2>Hinweise zur Balance</h2>${insightsHTML(ins)}</section>
+    ${viz('Muskelkarte', 'Wie viel jede Muskelgruppe trainiert wurde (Hauptmuskel = 1 Satz, Hilfsmuskel = ½). Antippen für Details.', bodyMapHTML(load.muscles, load.byMuscleEx))}`;
+}
+
 // ---------- Übungen ----------
 function exercisesHTML() {
   return `<header class="top row-between"><h1>Übungen</h1><button class="btn primary small" data-act="ex-new">+ Neue Übung</button></header>
@@ -875,6 +920,7 @@ function moreHTML() {
         <label class="field"><span>Dein Name</span><input data-bind="set-name" value="${esc(s.name)}" autocomplete="off"></label>
         <label class="field"><span>Körpergewicht (kg)</span><input data-bind="set-bw" inputmode="decimal" value="${s.bodyweight ?? ''}" autocomplete="off"></label>
       </div>
+      <label class="field"><span>Wochenziel (Kraft- & Hybrid-Einheiten)</span><select data-bind="set-goal">${[1, 2, 3, 4, 5].map(v => `<option value="${v}" ${v === (s.weeklyGoal || 2) ? 'selected' : ''}>${v}× pro Woche</option>`).join('')}</select></label>
       <label class="field"><span>Standard-Pause zwischen Sätzen</span><select data-bind="set-rest">${[0, 30, 45, 60, 75, 90, 120, 150, 180].map(v => `<option value="${v}" ${v === s.rest ? 'selected' : ''}>${v ? fmtTime(v) : 'Aus'}</option>`).join('')}</select></label>
       <label class="field check-line"><input type="checkbox" data-bind="set-sound" ${s.sound ? 'checked' : ''}><span>Ton am Pausen-Ende</span></label>
       <label class="field check-line"><input type="checkbox" data-bind="set-vibrate" ${s.vibrate ? 'checked' : ''}><span>Vibration am Pausen-Ende</span></label>
@@ -979,6 +1025,7 @@ function openImportPreview(parsed) {
 const entryOf = el => { const row = el.closest('[data-e]'); return D.active.entries[+row.dataset.e]; };
 
 const actions = {
+  'prog-range'(el) { progRange = el.dataset.k; renderView(); },
   'tab'(el) { tab = el.dataset.tab; window.scrollTo(0, 0); render(); },
   'close-layer'() { closeLayer(); },
   'confirm-ok'() { const l = topLayer(); closeLayer(() => l.onOk()); },
@@ -1460,6 +1507,7 @@ function bind(t) {
     case 'set-name': S.name = t.value.trim(); break;
     case 'set-bw': S.bodyweight = num(t.value); break;
     case 'set-rest': S.rest = +t.value; break;
+    case 'set-goal': S.weeklyGoal = +t.value; break;
     case 'set-sound': S.sound = t.checked; if (t.checked) { unlockAudio(); beep(); } break;
     case 'set-vibrate': S.vibrate = t.checked; if (t.checked) navigator.vibrate?.(100); break;
     case 'set-wake': S.wakeLock = t.checked; syncWakeLock(); break;
