@@ -3,7 +3,7 @@
   "short_name": "Kraftkladde",
   "description": "Dein persönliches Trainingsbuch für Krafttraining.",
   "lang": "de",
-  "id": "./",
+  "id": "/milzmaeuse/kraft/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
