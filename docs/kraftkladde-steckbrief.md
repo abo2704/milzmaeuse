@@ -20,12 +20,13 @@
    - Klimmzüge: eingetragenes Gewicht = Körpergewicht (72 kg) + Zusatzgewicht → umrechnen in „+ kg“ (72/72,5 → 0, 80 → +8).
    - Kurzhantel-Übungen: Gewicht = beide Hanteln → durch 2 teilen (44 → 22 pro Hand).
    - Mehrere Einträge am selben Tag = ein Training; Routine-Name = Trainingsname („Supersatz …“ → Supersätze erkennen).
-8. **Studio-Check-ins nachtragen** als „Training (nicht erfasst)“, damit die Chronik vollständig ist (Daten gibt André in der App ein).
+8. **Studio-Check-ins nachtragen** als „Training (nicht erfasst)“, damit die Chronik vollständig ist (Daten gibt André in der App ein). Typ wählbar (Kraft/Hybrid). Monate ohne genaue Tage (z. B. Oktober ≈ 7) als **geschätzte Monatsangabe** statt erfundener Tage.
 
 ## Stufe 2 – Workout-Timer
 - Geführte Intervalle: Belastung / Wechsel / Rundenpause, Countdown groß, nächste Station sichtbar, Ton + Vibration, Bildschirm an.
 - Vorlage **Deadly Dozen HIIT**: 10 Stationen × 1:30 Belastung, 10 s Wechsel → 2:00 Pause → 10 Stationen × 1:00.
   Beispiel-Stationen: Ski Erg · Deadlift 32 kg · Ski Erg · KH Drücken über Kopf 12,5 kg · Ski Erg · Ausfallschritt around the world 16 kg · Ski Erg · KH Snatches 12,5 kg · Ski Erg · Burpees.
+- **Frei anpassbar:** Timer-Vorlagen sind bearbeitbar (Stationen tauschen/umsortieren, Gewichte, Zeiten, Rundenzahl). Vor dem Start „Heute anpassen“ ohne die Vorlage zu ändern; Varianten per „Als neue Vorlage speichern“. Auch eigene Intervalle (z. B. 40/20 × 8) ohne Vorlage.
 - Erfasst wird v. a. das Gewicht pro Station (Ski Erg „auf Zeit“, Meter freiwillig). Fortschritt: „14 → 16 kg ↑“.
 
 ## Stufe 3 – Coach
