@@ -1,6 +1,7 @@
 // Kraftkladde – UI-Logik. Alles läuft lokal, ohne Server.
 import { db, load, save, replaceAll, resetAll, isValid } from './store.js';
-import { FIELDS, FIELD_ORDER, GROUPS, EQUIP, KINDS, BANDS, weightCol, sortFields } from './exercises.js';
+import { FIELDS, FIELD_ORDER, GROUPS, EQUIP, KINDS, BANDS, MUSCLES, weightCol, sortFields, musclesOf } from './exercises.js';
+import { KNOWLEDGE, recommendation, SCIENCE_NOTE } from './knowledge.js';
 import { METRICS, metricByKey, fmtMetric, exerciseSeries, computeRecords, bestOf, isBetter, workoutStats, setMetricFilter, metricAllowed } from './stats.js';
 import { lineChart, mountChart } from './chart.js';
 import { parseGymRun, buildImport } from './import.js';
@@ -10,7 +11,7 @@ import {
   fmtClock, monthLabel, weekStart, daysAgo, relDay, pick,
 } from './util.js';
 
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.2.0';
 let D = load();
 save(); // Startdaten bzw. nachgezogene Übungen sofort sichern
 let tab = 'train';
@@ -730,6 +731,26 @@ function progressHTML() {
     ${viz('Muskelkarte', 'Wie viel jede Muskelgruppe trainiert wurde (Hauptmuskel = 1 Satz, Hilfsmuskel = ½). Antippen für Details.', bodyMapHTML(load.muscles, load.byMuscleEx))}`;
 }
 
+// Wissenskarte einer Übung
+function knowledgeHTML(ex, open) {
+  const k = KNOWLEDGE[ex.id];
+  const mu = musclesOf(ex);
+  const muscles = [...mu.p.map(m => `<span class="chip mchip p">${MUSCLES[m]}</span>`), ...mu.s.map(m => `<span class="chip mchip">${MUSCLES[m]}</span>`)].join('');
+  const variant = (ids, dir) => ids.filter(id => D.exercises.some(e => e.id === id && !e.archived)).map(id =>
+    `<button class="variant" data-act="ex-open" data-id="${id}"><small>${dir}</small>${esc(exById(id).name)}</button>`).join('');
+  const vars = k ? variant(k.e, '← leichter') + variant(k.h, 'schwerer →') : '';
+  return `<details class="card know" ${open ? 'open' : ''}><summary><span>So geht's</span><small class="muted">Technik, Muskeln, Tipps</small></summary>
+    ${muscles ? `<div class="know-sec"><h4>Muskeln</h4><div class="chips">${muscles}</div><p class="muted small">Kräftig = Hauptmuskel, hell = Hilfsmuskel</p></div>` : ''}
+    <div class="know-sec"><h4>Empfehlung</h4><p>${esc(recommendation(ex, k))}</p></div>
+    ${k ? `<div class="know-sec"><h4>Ausführung</h4><ol class="know-list">${k.c.map(c => `<li>${esc(c)}</li>`).join('')}</ol></div>
+      <div class="know-sec"><h4>Typische Fehler</h4><ul class="know-list warn">${k.f.map(c => `<li>${esc(c)}</li>`).join('')}</ul></div>
+      <div class="know-sec runner"><h4>Für dich als Läufer</h4><p>${esc(k.l)}</p></div>
+      ${vars ? `<div class="know-sec"><h4>Varianten</h4><div class="variants">${vars}</div></div>` : ''}`
+      : '<p class="muted small">Eigene Übung – Muskeln und Empfehlung kommen aus dem Bewegungsmuster.</p>'}
+    <p class="muted small fine">${SCIENCE_NOTE}</p>
+  </details>`;
+}
+
 // ---------- Übungen ----------
 function exercisesHTML() {
   return `<header class="top row-between"><h1>Übungen</h1><button class="btn primary small" data-act="ex-new">+ Neue Übung</button></header>
@@ -769,6 +790,7 @@ function openExercise(id) {
           ${ex.archived ? '' : `<button class="btn small" data-act="ex-edit" data-id="${ex.id}">Bearbeiten</button>`}</div>
         <p class="muted">${esc(ex.group)} · ${EQUIP[ex.equip] || ''} · ${measureLabel(ex.fields, ex)}${ex.perSide ? ' · pro Seite' : ''}${ex.rest ? ' · Pause ' + fmtTime(ex.rest) : ''}</p>
         ${ex.note ? `<p class="entry-note">${esc(ex.note)}</p>` : ''}
+        ${knowledgeHTML(ex, !sessions.length)}
         ${sessions.length ? `
           ${bests ? `<h2>Bestwerte</h2><div class="tiles wrap">${bests}</div>` : ''}
           ${ms.length ? `<h2>Fortschritt</h2>
@@ -1127,6 +1149,9 @@ const actions = {
           <div class="btn-col">
             ${canLink ? `<button class="btn wide" data-act="entry-link">${ICON.link} Mit nächster Übung zum Supersatz verbinden</button>` : ''}
             ${inSS ? `<button class="btn wide" data-act="entry-unlink">Aus Supersatz lösen</button>` : ''}
+            ${(() => { const k = KNOWLEDGE[en.exId]; if (!k) return ''; const ok = id => D.exercises.some(e => e.id === id && !e.archived);
+              const e1 = k.e.find(ok), h1 = k.h.find(ok);
+              return e1 || h1 ? `<div class="btn-row">${e1 ? `<button class="btn" data-act="entry-variant" data-id="${e1}"><span class="vt"><small>leichter</small>${esc(exById(e1).name)}</span></button>` : ''}${h1 ? `<button class="btn" data-act="entry-variant" data-id="${h1}"><span class="vt"><small>schwerer</small>${esc(exById(h1).name)}</span></button>` : ''}</div>` : ''; })()}
             <button class="btn wide" data-act="entry-swap">Übung tauschen</button>
             <button class="btn wide" data-act="entry-mode-from-menu">Messart ändern</button>
             <div class="btn-row"><button class="btn" data-act="entry-move" data-d="-1" ${l.e === 0 ? 'disabled' : ''}>↑ Nach oben</button><button class="btn" data-act="entry-move" data-d="1" ${l.e === es.length - 1 ? 'disabled' : ''}>↓ Nach unten</button></div>
@@ -1152,6 +1177,12 @@ const actions = {
     const rest = es.filter(x => x.group === g);
     if (rest.length < 2) rest.forEach(x => (x.group = null));
     save(); closeLayer();
+  },
+  'entry-variant'(el) {
+    const l = topLayer(), en = D.active.entries[l.e], nx = exById(el.dataset.id);
+    en.exId = nx.id; en.fields = sortFields(nx.fields);
+    en.sets = en.sets.map(s => ({ warm: s.warm, done: false }));
+    save(); closeLayer(() => { renderView(); toast(`Getauscht: ${nx.name}`); });
   },
   'entry-swap'() {
     const l = topLayer(), en = D.active.entries[l.e];

@@ -51,4 +51,5 @@
 - **Stufe 1 fertig (v2.0.0):** Plätze Studio/Zuhause, Supersätze, Übung tauschen, Messwerte inkl. +kg/Miniband/Kalorien/abhaken, Chronik mit Kraft/Hybrid/Lauf, Termine & Läufe nachtragen, Monatsschätzung, Gym-Run-Import mit Vorschau, Design Grafit/Salbei.
 - Deadly Dozen ist vorerst eine normale Routine (2 Sätze je Station = 2 Runden); der geführte Timer folgt in Stufe 2.
 - **Fortschritt-Seite fertig (v2.1.0):** Konstanz, Kraftentwicklung, größte Steigerungen, Bewegungsmuster-Balance, Hinweise zu Ungleichgewichten, Muskelkarte.
-- Reihenfolge danach: **(b) Übungswissen** (Wissenskarte je Übung: Ausführung, Fehler, Muskeln, leichter/schwerer, Läufer-Nutzen, Empfehlung) → **(c) Workout-Timer**.
+- **Übungswissen fertig (v2.2.0):** 105 Übungen, jede mit Wissenskarte (Muskeln, Empfehlung, Ausführung, Fehler, Läufer-Nutzen, leichter/schwerer); Varianten im Training per Tipp tauschbar.
+- Als Nächstes: **(c) Workout-Timer**, danach Coach (Steigerungshinweise).
