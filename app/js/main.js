@@ -878,7 +878,7 @@ function showView(v) {
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) showView(b.dataset.v); };
 
 /* ============ Los geht's ============ */
-const APP_VERSION = 'v6'; // gleich halten mit VERSION in sw.js
+const APP_VERSION = 'v7'; // gleich halten mit VERSION in sw.js
 $('.foot').textContent = `Die Milzmäuse ${APP_VERSION} · mit 🧀 gebaut`;
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // Kommt eine neue Version, einmal automatisch neu laden, damit alte und neue Dateien nicht gemischt laufen

@@ -40,3 +40,13 @@ Heute · Aufgaben (Gamification) · Einkauf + Vorratskammer · Futter (Essenspla
 - Verträge: Strom, Gas, Internet, Hausrat, Haftpflicht (gemeinsam) + personenbezogene (Handy, Amazon Prime), filterbar. Kündigungsfristen → Erinnerungen + Wechselhilfe.
 - Erlebnistagebuch "Mäuse-Momente" mit "Heute vor einem Monat".
 - Keine Vertragsnummern/Zugangsdaten in Chat oder Code; Daten nur in Supabase, Schlüssel nie committen.
+
+# Kraftkladde – Krafttraining-App (André persönlich)
+
+Eigene PWA in `app/kraft/` → live unter https://abo2704.github.io/milzmaeuse/kraft/ (wird mit `app/` veröffentlicht).
+- Nur für André, **keine Supabase-Anbindung**: Daten in localStorage (`kraftkladde-v1`), Backup/Restore als JSON + CSV-Export im Reiter „Mehr“.
+- Kernidee: Jede Übung hat frei kombinierbare Messwerte `fields` aus `w` (kg), `r` (Wdh.), `d` (Meter), `t` (Sekunden). Pro Training per „⇄ Messart“ umstellbar (z. B. Farmers Carry Strecke ↔ Zeit), optional als Standard merken.
+- Dateien: `js/app.js` UI, `js/store.js` Speicher, `js/exercises.js` Felder/Gruppen/Start-Übungen (stabile IDs, neue werden bei Updates nachgezogen), `js/stats.js` Kennzahlen/Rekorde, `js/chart.js` SVG-Diagramm, `js/util.js`.
+- Features: Routinen, Vorher-Werte als Platzhalter (✓ übernimmt sie), Aufwärmsätze (zählen nicht für Rekorde), Pausen-Timer (pro Übung einstellbar), Stoppuhr, Rekord-Toast, Verlauf bearbeiten/nachtragen, Fortschrittsdiagramm je Kennzahl, 16-Wochen-Heatmap.
+- Bei Änderungen `VERSION` in `app/kraft/sw.js` UND `APP_VERSION` in `app/kraft/js/app.js` hochzählen.
+- Der Service Worker der Haushalts-App ignoriert `/kraft/` und löscht nur `mm-`-Caches (Kraftkladde nutzt `kk-`).
