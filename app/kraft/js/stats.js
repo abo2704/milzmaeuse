@@ -1,5 +1,6 @@
 // Kennzahlen, Rekorde und Verlauf je Übung.
 import { fmtKg, fmtTime, fmtDist, fmtNum } from './util.js';
+import { BANDS } from './exercises.js';
 
 // val(set) liefert den Wert eines Satzes oder null, wenn die Kennzahl für diesen Satz nicht passt.
 export const METRICS = [
@@ -10,10 +11,16 @@ export const METRICS = [
   { key: 'd', label: 'Weiteste Strecke', short: 'Strecke', better: 'max', kind: 'dist', val: s => s.d > 0 ? s.d : null },
   { key: 't', label: 'Längste Zeit', short: 'Zeit', better: 'max', kind: 'time', val: s => s.t > 0 && !(s.d > 0) ? s.t : null },
   { key: 'pace', label: 'Bestes Tempo', short: 'Tempo', better: 'min', kind: 'pace', val: s => s.t > 0 && s.d > 0 ? s.t / s.d * 1000 : null },
+  { key: 'b', label: 'Stärkstes Miniband', short: 'Band', better: 'max', kind: 'band', val: s => s.b != null ? s.b + 1 : null },
+  { key: 'c', label: 'Meiste Kalorien', short: 'Kalorien', better: 'max', kind: 'kcal', val: s => s.c > 0 ? s.c : null },
   { key: 'vol', label: 'Volumen pro Training (kg × Wdh.)', short: 'Volumen', better: 'max', kind: 'vol', session: true,
     val: s => s.w > 0 && s.r > 0 ? s.w * s.r : null },
 ];
 export const metricByKey = k => METRICS.find(m => m.key === k);
+// Welche Kennzahl passt zu welcher Übung? (z. B. kein 1RM bei Klimmzügen mit Zusatzgewicht) – setzt die App.
+let allowed = () => true;
+export const setMetricFilter = fn => { allowed = fn; };
+export const metricAllowed = (exId, m) => allowed(exId, m);
 
 export function fmtMetric(kind, v) {
   switch (kind) {
@@ -24,6 +31,8 @@ export function fmtMetric(kind, v) {
     case 'time': return fmtTime(v);
     case 'pace': return fmtTime(v) + ' /km';
     case 'vol': return fmtNum(v, 0) + ' kg';
+    case 'band': return BANDS[v - 1] || '–';
+    case 'kcal': return fmtNum(v, 0) + ' kcal';
   }
   return fmtNum(v);
 }
@@ -73,7 +82,7 @@ export function computeRecords(workouts) {
     for (const exId of new Set(w.entries.map(e => e.exId))) {
       const sets = setsOf(w, exId);
       for (const m of METRICS) {
-        if (m.session) continue;
+        if (m.session || !allowed(exId, m)) continue;
         const v = sessionValue(m, sets);
         if (v == null) continue;
         const k = exId + '|' + m.key;
@@ -87,6 +96,7 @@ export function computeRecords(workouts) {
 }
 
 export function workoutStats(w) {
+  if (!w.entries) w.entries = [];
   let sets = 0, vol = 0;
   for (const e of w.entries) for (const s of e.sets) {
     if (!s.warm) sets++;

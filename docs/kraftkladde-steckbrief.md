@@ -48,4 +48,6 @@
 - Motivation: Wochenziel-Ring, ↑-Pfeile bei Steigerung, Rekord-Moment, ein ehrlicher Satz nach dem Training – kein Konfetti-Overkill.
 
 ## Stand
-- Prototyp in `app/kraft/` (flexible Messwerte, Routinen, Pausen-Timer, Stoppuhr, Rekorde, Diagramme, Backup) – wird nach diesem Steckbrief umgebaut.
+- **Stufe 1 fertig (v2.0.0):** Plätze Studio/Zuhause, Supersätze, Übung tauschen, Messwerte inkl. +kg/Miniband/Kalorien/abhaken, Chronik mit Kraft/Hybrid/Lauf, Termine & Läufe nachtragen, Monatsschätzung, Gym-Run-Import mit Vorschau, Design Grafit/Salbei.
+- Deadly Dozen ist vorerst eine normale Routine (2 Sätze je Station = 2 Runden); der geführte Timer folgt in Stufe 2.
+- Als Nächstes: Stufe 2 (Workout-Timer).
