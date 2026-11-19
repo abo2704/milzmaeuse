@@ -52,4 +52,5 @@
 - Deadly Dozen ist vorerst eine normale Routine (2 Sätze je Station = 2 Runden); der geführte Timer folgt in Stufe 2.
 - **Fortschritt-Seite fertig (v2.1.0):** Konstanz, Kraftentwicklung, größte Steigerungen, Bewegungsmuster-Balance, Hinweise zu Ungleichgewichten, Muskelkarte.
 - **Übungswissen fertig (v2.2.0):** 105 Übungen, jede mit Wissenskarte (Muskeln, Empfehlung, Ausführung, Fehler, Läufer-Nutzen, leichter/schwerer); Varianten im Training per Tipp tauschbar.
-- Als Nächstes: **(c) Workout-Timer**, danach Coach (Steigerungshinweise).
+- **Workout-Timer fertig (v2.5.0):** geführte Intervalle (Deadly Dozen als Vorlage), Zeiten automatisch, Wdh. nachtragen, Cardio-Stationen gemeinsam tauschbar, spontaner Timer für jedes Training.
+- Als Nächstes: **Coach** (Steigerungshinweise 8–12, Pausenvorschläge, Wochenziel), optional Synchronisierung PC/Handy über Supabase.

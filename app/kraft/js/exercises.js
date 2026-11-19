@@ -110,6 +110,7 @@ export const SEED_EXERCISES = [
   // Ausdauer
   E('rudergeraet', 'Rudergerät', 'Ausdauer', 'cardio', ['d', 't']),
   E('assault-bike', 'Assault Bike', 'Ausdauer', 'cardio', ['c', 't']),
+  E('laufen', 'Laufen (Station)', 'Ausdauer', 'cardio', ['d', 't'], { note: 'Laufband oder draußen' }),
   E('seilspringen', 'Seilspringen', 'Ausdauer', 'kg', ['t']),
   // Mobilität
   E('warmup', 'Aufwärmen / Mobility', 'Mobilität', 'kg', []),
@@ -162,6 +163,7 @@ export const SEED_EXERCISES = [
 // Routinen bestehen aus Plätzen: je Platz eine Studio- und eine Zuhause-Übung (null = dort auslassen).
 // link: true = mit dem nächsten Platz als Supersatz verbunden.
 // alts = schnell wählbare Alternativen; multi = mehrere davon gleichzeitig (direkt hintereinander als Zirkel)
+const CARDIO = ['rudergeraet', 'assault-bike', 'laufen'];
 const I = (slot, studio, home, sets = 3, link = false, extra = {}) => ({ slot, studio, home, sets, link, ...extra });
 export const SEED_TEMPLATES = [
   { id: 'tpl-gk', name: 'Ganzkörper', kind: 'kraft', items: [
@@ -183,11 +185,14 @@ export const SEED_TEMPLATES = [
     I('Finisher', 'kb-finisher', 'kb-finisher', 1),
     I('Fuß & Reha', 'fuss-reha', 'fuss-reha', 1),
   ] },
-  { id: 'tpl-dd', name: 'Deadly Dozen HIIT', kind: 'hybrid', note: 'Runde 1: je 1:30 · Runde 2: je 1:00 · 10 s Wechsel · 2:00 Pause dazwischen', items: [
-    I('Station 1', 'ski-erg', 'ski-erg', 2), I('Station 2', 'kb-deadlift-dd', 'kb-deadlift-dd', 2), I('Station 3', 'ski-erg', 'ski-erg', 2),
-    I('Station 4', 'schulter-kh-steh', 'schulter-kh-steh', 2), I('Station 5', 'ski-erg', 'ski-erg', 2), I('Station 6', 'ausfall-atw', 'ausfall-atw', 2),
-    I('Station 7', 'ski-erg', 'ski-erg', 2), I('Station 8', 'kh-snatch', 'kh-snatch', 2), I('Station 9', 'ski-erg', 'ski-erg', 2),
-    I('Station 10', 'burpees', 'burpees', 2),
+  // Deadly Dozen: Intervall-Timer statt Pausen-Timer. Jede Station = ein Platz, jede Runde = ein Satz.
+  { id: 'tpl-dd', v: 2, name: 'Deadly Dozen HIIT', kind: 'hybrid', note: 'Timer starten und durchziehen – Wiederholungen kannst du danach nachtragen.',
+    timer: { rounds: [90, 60], change: 10, rest: 120, prep: 10 }, items: [
+    I('Station 1', 'ski-erg', 'ski-erg', 2, false, { alts: CARDIO }), I('Station 2', 'kb-deadlift-dd', 'kb-deadlift-dd', 2),
+    I('Station 3', 'ski-erg', 'ski-erg', 2, false, { alts: CARDIO }), I('Station 4', 'schulter-kh-steh', 'schulter-kh-steh', 2),
+    I('Station 5', 'ski-erg', 'ski-erg', 2, false, { alts: CARDIO }), I('Station 6', 'ausfall-atw', 'ausfall-atw', 2),
+    I('Station 7', 'ski-erg', 'ski-erg', 2, false, { alts: CARDIO }), I('Station 8', 'kh-snatch', 'kh-snatch', 2),
+    I('Station 9', 'ski-erg', 'ski-erg', 2, false, { alts: CARDIO }), I('Station 10', 'burpees', 'burpees', 2),
   ] },
 ];
 
