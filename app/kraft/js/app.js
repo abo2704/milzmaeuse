@@ -11,7 +11,7 @@ import {
   fmtClock, monthLabel, weekStart, daysAgo, relDay, pick,
 } from './util.js';
 
-const APP_VERSION = '2.3.0';
+const APP_VERSION = '2.4.0';
 let D = load();
 save(); // Startdaten bzw. nachgezogene Übungen sofort sichern
 let tab = 'train';
@@ -46,6 +46,9 @@ const measureLabel = (fs, ex) => {
   if (!f.length) return 'Nur abhaken';
   return f.map(k => k === 'w' && ex?.equip === 'kg' ? 'Zusatzgewicht' : FIELDS[k].label).join(' · ');
 };
+const shortName = n => n.replace(/\s*\(.*\)\s*$/, '');
+// Kurze Namen für Schalter – nur kürzen, wenn dadurch keine Verwechslung entsteht
+const chipNames = ids => { const sh = ids.map(id => shortName(exById(id).name)); return ids.map((id, i) => sh.filter(x => x === sh[i]).length > 1 ? exById(id).name : sh[i]); };
 const sortWorkouts = () => D.workouts.sort((a, b) => a.start - b.start);
 const kindOf = w => w.kind || 'kraft';
 const LOC = { studio: 'Studio', home: 'Zuhause' };
@@ -289,7 +292,7 @@ function workoutHTML() {
       const L = String.fromCharCode(65 + letter++);
       let j = i, inner = '', n = 1;
       while (j < es.length && es[j].group === g) { inner += entryHTML(es[j], j, `${L}${n++}`); j++; }
-      body += `<div class="superset"><div class="ss-label">${ICON.link} Supersatz ${L} · Pause nach der Runde</div>${inner}</div>`;
+      body += `<div class="superset"><div class="ss-label">${ICON.link} ${j - i > 2 ? 'Zirkel' : 'Supersatz'} ${L} · Pause nach der Runde</div>${inner}</div>`;
       i = j;
     } else { body += entryHTML(es[i], i); i++; }
   }
@@ -329,6 +332,8 @@ function entryHTML(en, i, ssTag = '') {
       <button class="icon-btn" data-act="entry-menu" data-e="${i}" aria-label="Übungs-Optionen">${ICON.dots}</button>
     </div>
     ${note ? `<p class="entry-note">${note}</p>` : ''}
+    ${en.slotAlts && D.active.entries.findIndex(x => x.slotKey === en.slotKey) === i ? `<div class="alt-row"><span>${en.slotMulti ? 'Kombinieren' : 'Alternativen'}</span><div class="chips">${(nm => en.slotAlts.map((id, k) =>
+      `<button class="chip ${D.active.entries.some(x => x.slotKey === en.slotKey && x.exId === id) ? 'on' : ''}" data-act="slot-alt" data-e="${i}" data-id="${id}">${esc(nm[k])}</button>`).join(''))(chipNames(en.slotAlts))}</div></div>` : ''}
     ${en.sets.length && !check ? `<div class="${cls} head" style="--n:${n}"><span>Satz</span>${showPrev ? '<span>Vorher</span>' : ''}${fields.map(f => `<span>${f === 'w' ? (barOf(ex) ? 'Scheiben' : weightCol(ex.equip)) : FIELDS[f].col}</span>`).join('')}<span></span></div>` : ''}
     ${rows}
     <div class="entry-foot">
@@ -367,7 +372,8 @@ function entriesFromTemplate(t, loc) {
   for (const it of t.items) {
     const id = loc === 'home' && hasHome(t) ? it.home : (it.studio ?? it.home);
     if (!id || !D.exercises.some(e => e.id === id)) { prevLink = false; continue; }
-    const en = newEntry(id, it.sets, { slot: it.slot });
+    const alts = [...new Set([id, ...(it.alts || [])])].filter(x => D.exercises.some(e => e.id === x && !e.archived));
+    const en = newEntry(id, it.sets, { slot: it.slot, slotKey: uid(), slotAlts: alts.length > 1 ? alts : null, slotMulti: !!it.multi });
     if (prevLink && out.length) { g ||= uid(); out.at(-1).group = g; en.group = g; } else g = null;
     out.push(en);
     prevLink = !!it.link;
@@ -847,18 +853,18 @@ function openExerciseForm({ id = null, name = '', group = '', onSaved } = {}) {
 }
 
 // Auswahl: Übungen hinzufügen (Mehrfach) oder eine wählen (single)
-function openPicker(onDone, { single = false, prefer = '', title, allowNone = false } = {}) {
+function openPicker(onDone, { single = false, prefer = '', title, allowNone = false, preselect = [], doneLabel = '', allowEmpty = false } = {}) {
   openLayer({
-    full: true, kind: 'picker', sel: new Set(), q: '', onDone, single, prefer, allowNone,
+    full: true, kind: 'picker', sel: new Set(preselect), q: '', onDone, single, prefer, allowNone, doneLabel, allowEmpty,
     html: l => `<div class="page picker">
       <div class="page-head"><button class="icon-btn" data-act="close-layer" aria-label="Zurück">${ICON.back}</button><h1>${esc(title || (single ? 'Übung wählen' : 'Übungen wählen'))}</h1></div>
       <input class="search" id="pick-search" type="search" placeholder="Suchen oder neue Übung eintippen…" value="${esc(l.q)}" autocomplete="off">
       <div id="pick-list">${pickListHTML(l)}</div>
-      ${single ? '' : `<div class="sticky-foot"><button class="btn primary wide big" data-act="pick-done" id="pick-done" ${l.sel.size ? '' : 'disabled'}>${pickLabel(l)}</button></div>`}
+      ${single ? '' : `<div class="sticky-foot"><button class="btn primary wide big" data-act="pick-done" id="pick-done" ${l.sel.size || l.allowEmpty ? '' : 'disabled'}>${pickLabel(l)}</button></div>`}
     </div>`,
   });
 }
-const pickLabel = l => l.sel.size ? `${l.sel.size} hinzufügen` : 'Tippe Übungen an';
+const pickLabel = l => l.doneLabel ? `${l.doneLabel}${l.sel.size ? ` (${l.sel.size})` : ''}` : l.sel.size ? `${l.sel.size} hinzufügen` : 'Tippe Übungen an';
 function pickListHTML(l) {
   const q = norm(l.q);
   const list = visibleExercises().filter(e => !q || norm(e.name).includes(q) || norm(e.group).includes(q));
@@ -916,9 +922,12 @@ function openTemplate(tpl) {
             <button class="slot-pick" data-act="slot-pick" data-i="${i}" data-w="studio"><small>Studio</small>${it.studio ? esc(exById(it.studio).name) : '<em>auslassen</em>'}</button>
             <button class="slot-pick" data-act="slot-pick" data-i="${i}" data-w="home"><small>Zuhause</small>${it.home === it.studio && it.home ? '<em>wie Studio</em>' : it.home ? esc(exById(it.home).name) : '<em>auslassen</em>'}</button>
           </div>
+          ${it.alts?.length ? `<p class="slot-alts muted small">${it.multi ? 'Kombinierbar' : 'Alternativen'}: ${chipNames(it.alts).map(esc).join(' · ')}</p>` : ''}
           <div class="slot-actions">
             <button data-act="tpl-move" data-i="${i}" data-d="-1" aria-label="Nach oben">↑</button><button data-act="tpl-move" data-i="${i}" data-d="1" aria-label="Nach unten">↓</button>
             ${i < t.items.length - 1 ? `<button class="${it.link ? 'on' : ''}" data-act="tpl-link" data-i="${i}">${ICON.link} ${it.link ? 'Supersatz' : 'verbinden'}</button>` : ''}
+            <button data-act="tpl-alts" data-i="${i}">⇄ Alternativen</button>
+            ${it.alts?.length ? `<button class="${it.multi ? 'on' : ''}" data-act="tpl-multi" data-i="${i}">+ mehrere</button>` : ''}
             <button data-act="tpl-del" data-i="${i}" aria-label="Platz entfernen">✕</button>
           </div>
         </div>`;
@@ -1224,7 +1233,7 @@ const actions = {
     const en = D.active.entries[l.e];
     en.fields = sortFields([...l.sel]);
     if (l.el.querySelector('#mode-default')?.checked) {
-      const ex = D.exercises.find(x => x.id === en.exId); if (ex) ex.fields = [...en.fields];
+      const ex = D.exercises.find(x => x.id === en.exId); if (ex) { ex.fields = [...en.fields]; ex.edited = true; }
     }
     save(); closeLayer(renderView);
   },
@@ -1366,6 +1375,7 @@ const actions = {
     if (delta && l.el.querySelector('#exf-shift')?.checked) {
       for (const w of D.workouts) for (const e of w.entries || []) if (e.exId === d.id) for (const st of e.sets) if (st.w != null) st.w = Math.round((st.w + delta) * 100) / 100;
     }
+    d.edited = true;
     if (i >= 0) D.exercises[i] = d; else D.exercises.push(d);
     save();
     const cb = l.onSaved;
@@ -1394,7 +1404,7 @@ const actions = {
     if (l.single) { closeLayer(() => l.onDone([id])); return; }
     l.sel.has(id) ? l.sel.delete(id) : l.sel.add(id);
     l.el.querySelectorAll(`[data-id="${id}"]`).forEach(b => b.classList.toggle('on', l.sel.has(id)));
-    const btn = l.el.querySelector('#pick-done'); btn.textContent = pickLabel(l); btn.disabled = !l.sel.size;
+    const btn = l.el.querySelector('#pick-done'); btn.textContent = pickLabel(l); btn.disabled = !l.sel.size && !l.allowEmpty;
   },
   'pick-none'() { const l = topLayer(); closeLayer(() => l.onDone([null])); },
   'pick-new'() {
@@ -1412,6 +1422,36 @@ const actions = {
   'tpl-move'(el) {
     const l = topLayer(), i = +el.dataset.i, j = i + +el.dataset.d, a = l.draft.items;
     if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; paintLayer(l);
+  },
+  'tpl-alts'(el) {
+    const l = topLayer(), it = l.draft.items[+el.dataset.i];
+    const main = it.studio || it.home;
+    openPicker(ids => { it.alts = ids.filter(x => x !== main); if (!it.alts.length) it.multi = false; paintLayer(l); },
+      { title: `Alternativen: ${it.slot || 'Platz'}`, prefer: main ? exById(main).group : '', preselect: it.alts || [], doneLabel: 'Übernehmen', allowEmpty: true });
+  },
+  'tpl-multi'(el) { const l = topLayer(), it = l.draft.items[+el.dataset.i]; it.multi = !it.multi; paintLayer(l); toast(it.multi ? 'Mehrere gleichzeitig möglich (als Zirkel)' : 'Alternativen werden getauscht'); },
+  'slot-alt'(el) {
+    const es = D.active.entries, en = es[+el.dataset.e], id = el.dataset.id, key = en.slotKey;
+    const members = () => es.map((x, i) => x.slotKey === key ? i : -1).filter(i => i >= 0);
+    const present = members().find(i => es[i].exId === id);
+    if (!en.slotMulti) {
+      if (present !== undefined) return;
+      const nx = exById(id);
+      en.exId = id; en.fields = sortFields(nx.fields); en.sets = en.sets.map(s => ({ warm: s.warm, done: false }));
+    } else {
+      if (present !== undefined) {
+        if (members().length === 1) { toast('Mindestens eine Übung bleibt drin'); return; }
+        if (es[present].sets.some(s => s.done)) { toast('Hat schon abgehakte Sätze – über ⋯ entfernen'); return; }
+        const keep = es[present]; es.splice(present, 1);
+        if (keep === en) { /* Schalter-Zeile wandert zur nächsten Übung des Platzes */ }
+      } else {
+        const ms = members(), last = ms.at(-1);
+        es.splice(last + 1, 0, newEntry(id, es[last].sets.length, { slot: en.slot, slotKey: key, slotAlts: en.slotAlts, slotMulti: true }));
+      }
+      const ms = es.filter(x => x.slotKey === key), g = ms.length > 1 ? 'c-' + key : null;
+      ms.forEach(x => (x.group = g));
+    }
+    save(); renderView();
   },
   'tpl-link'(el) { const l = topLayer(), it = l.draft.items[+el.dataset.i]; it.link = !it.link; paintLayer(l); },
   'tpl-del'(el) { const l = topLayer(); l.draft.items.splice(+el.dataset.i, 1); paintLayer(l); },
@@ -1435,6 +1475,7 @@ const actions = {
     d.items = d.items.filter(i => i.studio || i.home);
     const i = D.templates.findIndex(t => t.id === d.id);
     if (i >= 0) D.templates[i] = d; else D.templates.push(d);
+    d.edited = true;
     save(); closeLayer(() => { render(); toast('Routine gespeichert ✓'); });
   },
   'tpl-remove'() {

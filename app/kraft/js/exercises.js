@@ -48,7 +48,7 @@ export const SEED_EXERCISES = [
   E('rdl', 'Rumänisches Kreuzheben', 'Hüftdominant', 'lh', WR, { aliases: ['Romanian Deadlift'] }),
   E('kb-deadlift', 'Kettlebell Deadlift', 'Hüftdominant', 'kb', WR, { note: 'Gewicht pro Kugel', importHalve: true }),
   E('kreuzheben-kh', 'Kreuzheben (Kurzhantel)', 'Hüftdominant', 'kh', WR, { aliases: ['Kreuzheben Kurzhantel'], importHalve: true }),
-  E('trapbar', 'Kreuzheben mit Trap Bar', 'Hüftdominant', 'lh', WR, { rest: 150, aliases: ['Trap Bar Deadlift', 'Deadlift Trap Bar'] }),
+  E('trapbar', 'Kreuzheben mit Trap Bar', 'Hüftdominant', 'lh', WR, { rest: 150, bar: 20, aliases: ['Trap Bar Deadlift', 'Deadlift Trap Bar'] }),
   E('kb-swings', 'Kettlebell Swings', 'Hüftdominant', 'kb', WR),
   E('hip-thrust', 'Hip Thrust', 'Hüftdominant', 'lh', WR),
   E('glute-bridge', 'Glute Bridge', 'Hüftdominant', 'kg', ['r', 'b']),
@@ -62,7 +62,7 @@ export const SEED_EXERCISES = [
   E('liegestuetze', 'Liegestütze', 'Drücken horizontal', 'kg', ['r']),
   E('liegestuetz-griff', 'Liegestütze an Griffen', 'Drücken horizontal', 'kg', ['r'], { aliases: ['Liegestütz an Griff'] }),
   // Drücken vertikal
-  E('military', 'Military Press', 'Drücken vertikal', 'lh', WR, { aliases: ['Schulterdrücken Langhantel, Military (stehend)'] }),
+  E('military', 'Military Press', 'Drücken vertikal', 'lh', WR, { bar: 20, aliases: ['Schulterdrücken Langhantel, Military (stehend)'] }),
   E('schulter-kh-sitz', 'Schulterdrücken (Kurzhantel, sitzend)', 'Drücken vertikal', 'kh', WR, { aliases: ['Schulterdrücken Kurzhantel (sitzend)'], importHalve: true }),
   E('schulter-kh-steh', 'Schulterdrücken (Kurzhantel, stehend)', 'Drücken vertikal', 'kh', WR, { aliases: ['Schulterdrücken KH stehend'] }),
   E('pike', 'Pike Push-ups', 'Drücken vertikal', 'kg', ['r']),
@@ -81,7 +81,8 @@ export const SEED_EXERCISES = [
   E('kb-around', 'Kettlebell other way around', 'Core', 'kb', WR),
   E('stuetz-ruder', 'Stütz mit Rudern', 'Core', 'kh', WR, { aliases: ['Stütz mit Ruder'] }),
   E('pull-through', 'Plank Pull-Through (Kurzhantel)', 'Core', 'kh', WR, { note: 'Wdh. = Züge gesamt (links + rechts)' }),
-  E('kb-finisher', 'Kettlebell-Finisher (Halos & Around the World)', 'Core', 'kb', WR, { note: '8× Halo links · 8× Halo rechts · 8× Überzug im Stehen · dann Around the World bis zur Erschöpfung (Wdh. = dieser letzte Teil)' }),
+  E('kb-finisher', 'Kettlebell-Finisher (Halos, Überzüge, Curls)', 'Core', 'kb', WR, { note: '8× Halo links · 8× Halo rechts · 8× Überzug im Stehen · dann Curls bis zur Erschöpfung (Wdh. = Curls)' }),
+  E('russian-twist', 'Russian Twist (Kettlebell)', 'Core', 'kb', WR, { note: 'Wdh. = Drehungen gesamt (links + rechts)' }),
   E('plank', 'Plank', 'Core', 'kg', ['w', 't']),
   E('seitstuetz', 'Seitstütz', 'Core', 'kg', ['t'], { perSide: true }),
   E('leg-raises', 'Hängendes Beinheben', 'Core', 'kg', ['r']),
@@ -160,7 +161,8 @@ export const SEED_EXERCISES = [
 
 // Routinen bestehen aus Plätzen: je Platz eine Studio- und eine Zuhause-Übung (null = dort auslassen).
 // link: true = mit dem nächsten Platz als Supersatz verbunden.
-const I = (slot, studio, home, sets = 3, link = false) => ({ slot, studio, home, sets, link });
+// alts = schnell wählbare Alternativen; multi = mehrere davon gleichzeitig (direkt hintereinander als Zirkel)
+const I = (slot, studio, home, sets = 3, link = false, extra = {}) => ({ slot, studio, home, sets, link, ...extra });
 export const SEED_TEMPLATES = [
   { id: 'tpl-gk', name: 'Ganzkörper', kind: 'kraft', items: [
     I('Kniedominant', 'kniebeuge', 'bulgarian'),
@@ -172,12 +174,12 @@ export const SEED_TEMPLATES = [
     I('Core', 'kaefer', 'kaefer', 3),
     I('Fuß & Reha', 'fuss-reha', 'fuss-reha', 1),
   ] },
-  { id: 'tpl-gk-kern', name: 'Ganzkörper Kern', kind: 'kraft', items: [
+  { id: 'tpl-gk-kern', v: 2, name: 'Ganzkörper Kern', kind: 'kraft', items: [
     I('Hüftdominant', 'trapbar', 'sl-rdl'),
     I('Drücken horizontal', 'schraeg-kh', 'liegestuetze', 3, true),
     I('Ziehen vertikal', 'klimmzuege-eng', 'klimmzuege-eng'),
-    I('Drücken vertikal', 'military', 'pike'),
-    I('Core', 'pull-through', 'pull-through'),
+    I('Drücken vertikal', 'military', 'pike', 3, false, { alts: ['schulter-kh-steh', 'schulter-kh-sitz'] }),
+    I('Core', 'pull-through', 'pull-through', 3, false, { alts: ['kaefer', 'russian-twist'], multi: true }),
     I('Finisher', 'kb-finisher', 'kb-finisher', 1),
     I('Fuß & Reha', 'fuss-reha', 'fuss-reha', 1),
   ] },
@@ -266,7 +268,8 @@ const MUSCLE_OVERRIDES = {
   'box-pistol': M(['quadrizeps', 'gesaess'], ['waden', 'seitbauch']),
   'trapbar': M(['gesaess', 'quadrizeps'], ['beinbeuger', 'unterer_ruecken', 'ruecken_oben', 'unterarme']),
   'pull-through': M(['seitbauch', 'bauch'], ['schultern', 'ruecken_oben']),
-  'kb-finisher': M(['schultern', 'seitbauch'], ['bauch', 'lat', 'trizeps']),
+  'kb-finisher': M(['schultern', 'bizeps'], ['seitbauch', 'bauch', 'lat', 'trizeps']),
+  'russian-twist': M(['seitbauch'], ['bauch']),
 };
 export function musclesOf(ex) {
   return MUSCLE_OVERRIDES[ex.id] || ex.muscles || GROUP_MUSCLES[ex.group] || M([]);
