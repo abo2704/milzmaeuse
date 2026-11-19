@@ -48,6 +48,7 @@ export const SEED_EXERCISES = [
   E('rdl', 'Rumänisches Kreuzheben', 'Hüftdominant', 'lh', WR, { aliases: ['Romanian Deadlift'] }),
   E('kb-deadlift', 'Kettlebell Deadlift', 'Hüftdominant', 'kb', WR, { note: 'Gewicht pro Kugel', importHalve: true }),
   E('kreuzheben-kh', 'Kreuzheben (Kurzhantel)', 'Hüftdominant', 'kh', WR, { aliases: ['Kreuzheben Kurzhantel'], importHalve: true }),
+  E('trapbar', 'Kreuzheben mit Trap Bar', 'Hüftdominant', 'lh', WR, { rest: 150, aliases: ['Trap Bar Deadlift', 'Deadlift Trap Bar'] }),
   E('kb-swings', 'Kettlebell Swings', 'Hüftdominant', 'kb', WR),
   E('hip-thrust', 'Hip Thrust', 'Hüftdominant', 'lh', WR),
   E('glute-bridge', 'Glute Bridge', 'Hüftdominant', 'kg', ['r', 'b']),
@@ -79,6 +80,8 @@ export const SEED_EXERCISES = [
   E('kaefer', 'Käfer (Dead Bug)', 'Core', 'kg', ['r'], { aliases: ['Käfer'] }),
   E('kb-around', 'Kettlebell other way around', 'Core', 'kb', WR),
   E('stuetz-ruder', 'Stütz mit Rudern', 'Core', 'kh', WR, { aliases: ['Stütz mit Ruder'] }),
+  E('pull-through', 'Plank Pull-Through (Kurzhantel)', 'Core', 'kh', WR, { note: 'Wdh. = Züge gesamt (links + rechts)' }),
+  E('kb-finisher', 'Kettlebell-Finisher (Halos & Around the World)', 'Core', 'kb', WR, { note: '8× Halo links · 8× Halo rechts · 8× Überzug im Stehen · dann Around the World bis zur Erschöpfung (Wdh. = dieser letzte Teil)' }),
   E('plank', 'Plank', 'Core', 'kg', ['w', 't']),
   E('seitstuetz', 'Seitstütz', 'Core', 'kg', ['t'], { perSide: true }),
   E('leg-raises', 'Hängendes Beinheben', 'Core', 'kg', ['r']),
@@ -169,6 +172,15 @@ export const SEED_TEMPLATES = [
     I('Core', 'kaefer', 'kaefer', 3),
     I('Fuß & Reha', 'fuss-reha', 'fuss-reha', 1),
   ] },
+  { id: 'tpl-gk-kern', name: 'Ganzkörper Kern', kind: 'kraft', items: [
+    I('Hüftdominant', 'trapbar', 'sl-rdl'),
+    I('Drücken horizontal', 'schraeg-kh', 'liegestuetze', 3, true),
+    I('Ziehen vertikal', 'klimmzuege-eng', 'klimmzuege-eng'),
+    I('Drücken vertikal', 'military', 'pike'),
+    I('Core', 'pull-through', 'pull-through'),
+    I('Finisher', 'kb-finisher', 'kb-finisher', 1),
+    I('Fuß & Reha', 'fuss-reha', 'fuss-reha', 1),
+  ] },
   { id: 'tpl-dd', name: 'Deadly Dozen HIIT', kind: 'hybrid', note: 'Runde 1: je 1:30 · Runde 2: je 1:00 · 10 s Wechsel · 2:00 Pause dazwischen', items: [
     I('Station 1', 'ski-erg', 'ski-erg', 2), I('Station 2', 'kb-deadlift-dd', 'kb-deadlift-dd', 2), I('Station 3', 'ski-erg', 'ski-erg', 2),
     I('Station 4', 'schulter-kh-steh', 'schulter-kh-steh', 2), I('Station 5', 'ski-erg', 'ski-erg', 2), I('Station 6', 'ausfall-atw', 'ausfall-atw', 2),
@@ -252,6 +264,9 @@ const MUSCLE_OVERRIDES = {
   'bear-crawl': M(['schultern', 'bauch'], ['quadrizeps']),
   'wall-sit': M(['quadrizeps']), 'sl-bridge': M(['gesaess'], ['beinbeuger']),
   'box-pistol': M(['quadrizeps', 'gesaess'], ['waden', 'seitbauch']),
+  'trapbar': M(['gesaess', 'quadrizeps'], ['beinbeuger', 'unterer_ruecken', 'ruecken_oben', 'unterarme']),
+  'pull-through': M(['seitbauch', 'bauch'], ['schultern', 'ruecken_oben']),
+  'kb-finisher': M(['schultern', 'seitbauch'], ['bauch', 'lat', 'trizeps']),
 };
 export function musclesOf(ex) {
   return MUSCLE_OVERRIDES[ex.id] || ex.muscles || GROUP_MUSCLES[ex.group] || M([]);

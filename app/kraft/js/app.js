@@ -11,7 +11,7 @@ import {
   fmtClock, monthLabel, weekStart, daysAgo, relDay, pick,
 } from './util.js';
 
-const APP_VERSION = '2.2.1';
+const APP_VERSION = '2.3.0';
 let D = load();
 save(); // Startdaten bzw. nachgezogene Übungen sofort sichern
 let tab = 'train';
@@ -50,12 +50,14 @@ const sortWorkouts = () => D.workouts.sort((a, b) => a.start - b.start);
 const kindOf = w => w.kind || 'kraft';
 const LOC = { studio: 'Studio', home: 'Zuhause' };
 
-function setStr(s, fields, ex) {
+const barOf = ex => (ex && ex.bar > 0 ? ex.bar : 0);
+// plates = true: bei Stangen-Übungen nur die Scheiben anzeigen (wie im Eingabefeld)
+function setStr(s, fields, ex, plates = false) {
   const f = sortFields(fields);
   if (!f.length) return '✓ erledigt';
   const has = k => f.includes(k) && s[k] != null;
   let main = '';
-  if (has('w') && !(ex?.equip === 'kg' && !s.w)) main = (ex?.equip === 'kg' ? '+' : '') + fmtKg(s.w);
+  if (has('w') && !(ex?.equip === 'kg' && !s.w)) main = (ex?.equip === 'kg' ? '+' : '') + fmtKg(plates ? Math.max(0, s.w - barOf(ex)) : s.w);
   if (has('r')) main = main ? `${main} × ${s.r}` : `${s.r} Wdh.`;
   const rest = [];
   if (has('b')) rest.unshift(BANDS[s.b] || '');
@@ -311,7 +313,7 @@ function entryHTML(en, i, ssTag = '') {
     const ph = f => p && prev.fields.includes(f) ? p[f] : null;
     return `<div class="${cls}${s.done ? ' done' : ''}${s.warm ? ' warm' : ''}" style="--n:${n}" data-e="${i}" data-s="${j}">
       <button class="set-no" data-act="set-menu" aria-label="Satz ${label} Optionen">${label}</button>
-      ${check ? `<span class="prev">${s.done ? 'Erledigt' : 'Abhaken, wenn gemacht'}</span>` : showPrev ? `<span class="prev">${p ? esc(setStr(p, prev.fields, ex)) : '–'}</span>` : ''}
+      ${check ? `<span class="prev">${s.done ? 'Erledigt' : 'Abhaken, wenn gemacht'}</span>` : showPrev ? `<span class="prev">${p ? esc(setStr(p, prev.fields, ex, true)) : '–'}</span>` : ''}
       ${fields.map(f => inputHTML(f, s[f], ph(f), ex)).join('')}
       <button class="check" data-act="set-done" aria-label="Satz abhaken">${ICON.check}</button>
     </div>`;
@@ -322,12 +324,12 @@ function entryHTML(en, i, ssTag = '') {
       ${ssTag ? `<span class="ss-tag">${ssTag}</span>` : ''}
       <button class="ex-link" data-act="ex-open" data-id="${ex.id}">
         <span class="ex-name">${esc(ex.name)}</span>
-        <span class="ex-sub">${en.slot ? esc(en.slot) + ' · ' : ''}${measureLabel(fields, ex)}${ex.perSide ? ' · pro Seite' : ''}${prev ? ' · zuletzt ' + relDay(prev.date) : ''}</span>
+        <span class="ex-sub">${en.slot ? esc(en.slot) + ' · ' : ''}${measureLabel(fields, ex)}${ex.perSide ? ' · pro Seite' : ''}${barOf(ex) && fields.includes('w') ? ' · + Stange ' + fmtNum(barOf(ex)) + ' kg' : ''}${prev ? ' · zuletzt ' + relDay(prev.date) : ''}</span>
       </button>
       <button class="icon-btn" data-act="entry-menu" data-e="${i}" aria-label="Übungs-Optionen">${ICON.dots}</button>
     </div>
     ${note ? `<p class="entry-note">${note}</p>` : ''}
-    ${en.sets.length && !check ? `<div class="${cls} head" style="--n:${n}"><span>Satz</span>${showPrev ? '<span>Vorher</span>' : ''}${fields.map(f => `<span>${f === 'w' ? weightCol(ex.equip) : FIELDS[f].col}</span>`).join('')}<span></span></div>` : ''}
+    ${en.sets.length && !check ? `<div class="${cls} head" style="--n:${n}"><span>Satz</span>${showPrev ? '<span>Vorher</span>' : ''}${fields.map(f => `<span>${f === 'w' ? (barOf(ex) ? 'Scheiben' : weightCol(ex.equip)) : FIELDS[f].col}</span>`).join('')}<span></span></div>` : ''}
     ${rows}
     <div class="entry-foot">
       <button class="btn small" data-act="add-set" data-e="${i}">+ Satz</button>
@@ -343,7 +345,8 @@ function inputHTML(f, v, ph, ex) {
       <option value="">${ph != null ? esc(BANDS[ph]) : '–'}</option>
       ${BANDS.map((b, i) => `<option value="${i}" ${v === i ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select>`;
   }
-  const show = x => x == null ? '' : f === 't' ? fmtTime(x) : String(x).replace('.', ',');
+  const bar = f === 'w' ? barOf(ex) : 0;
+  const show = x => x == null ? '' : f === 't' ? fmtTime(x) : String(Math.round((x - bar) * 100) / 100).replace('.', ',');
   const mode = f === 'w' || f === 'd' ? 'decimal' : 'numeric';
   const phs = ph == null && f === 'w' && ex?.equip === 'kg' ? 'KG' : show(ph);
   return `<input class="val" data-f="${f}" inputmode="${mode}" enterkeyhint="next" autocomplete="off" value="${show(v)}" placeholder="${phs}" aria-label="${FIELDS[f].label}">`;
@@ -788,7 +791,7 @@ function openExercise(id) {
       return `<div class="page">
         <div class="page-head"><button class="icon-btn" data-act="close-layer" aria-label="Zurück">${ICON.back}</button><h1>${esc(ex.name)}</h1>
           ${ex.archived ? '' : `<button class="btn small" data-act="ex-edit" data-id="${ex.id}">Bearbeiten</button>`}</div>
-        <p class="muted">${esc(ex.group)} · ${EQUIP[ex.equip] || ''} · ${measureLabel(ex.fields, ex)}${ex.perSide ? ' · pro Seite' : ''}${ex.rest ? ' · Pause ' + fmtTime(ex.rest) : ''}</p>
+        <p class="muted">${esc(ex.group)} · ${EQUIP[ex.equip] || ''} · ${measureLabel(ex.fields, ex)}${ex.perSide ? ' · pro Seite' : ''}${barOf(ex) ? ' · Stange ' + fmtNum(barOf(ex)) + ' kg' : ''}${ex.rest ? ' · Pause ' + fmtTime(ex.rest) : ''}</p>
         ${ex.note ? `<p class="entry-note">${esc(ex.note)}</p>` : ''}
         ${knowledgeHTML(ex, !sessions.length)}
         ${sessions.length ? `
@@ -812,7 +815,7 @@ function openExerciseForm({ id = null, name = '', group = '', onSaved } = {}) {
   const ex = id ? exById(id) : null;
   const draft = ex ? structuredClone(ex) : { id: uid(), name, group: group || exFilter.group || 'Ganzkörper & Hybrid', equip: 'kh', fields: ['w', 'r'], perSide: false, note: '', rest: null };
   openLayer({
-    full: true, draft, isNew: !ex, onSaved,
+    full: true, draft, isNew: !ex, onSaved, origBar: ex?.bar || 0,
     html: l => {
       const d = l.draft;
       const rests = [[null, `Standard (${fmtTime(D.settings.rest)})`], [30, '0:30'], [45, '0:45'], [60, '1:00'], [90, '1:30'], [120, '2:00'], [150, '2:30'], [180, '3:00'], [240, '4:00']];
@@ -829,6 +832,9 @@ function openExerciseForm({ id = null, name = '', group = '', onSaved } = {}) {
           ${d.equip === 'kg' ? 'Körpergewicht: Zusatzgewicht leer lassen = ohne Gewicht, „8“ = +8 kg.<br>' : d.equip === 'kh' ? 'Kurzhantel: Gewicht <b>pro Hand</b> eintragen.<br>' : ''}
           Nichts ausgewählt = <b>nur abhaken</b> (z. B. Fuß-Übungen). Die Messart lässt sich im Training jederzeit umstellen.</p>
         </div>
+        ${d.equip === 'lh' && d.fields.includes('w') ? `<label class="field"><span>Stangengewicht in kg (leer = du trägst das Gesamtgewicht ein)</span><input data-bind="exf-bar" inputmode="decimal" value="${d.bar ? String(d.bar).replace('.', ',') : ''}" placeholder="z. B. 20" autocomplete="off"></label>
+          <p class="hint">Mit Stangengewicht trägst du im Training nur die <b>Scheiben</b> ein (beide Seiten zusammen). Die App rechnet die Stange dazu – Verlauf, Rekorde und Diagramme zeigen das Gesamtgewicht.</p>
+          ${!l.isNew && (l.origBar || 0) !== (d.bar || 0) && D.workouts.some(w => (w.entries || []).some(e => e.exId === d.id)) ? `<label class="field check-line"><input type="checkbox" id="exf-shift"><span>Bisherige Einträge anpassen (${(d.bar || 0) - (l.origBar || 0) > 0 ? '+' : ''}${fmtNum((d.bar || 0) - (l.origBar || 0))} kg) – nur ankreuzen, wenn du dort ${l.origBar ? 'mit der alten Stange gerechnet' : 'nur die Scheiben eingetragen'} hast</span></label>` : ''}` : ''}
         <label class="field check-line"><input type="checkbox" data-bind="exf-side" ${d.perSide ? 'checked' : ''}><span>Einseitig (Werte gelten pro Seite)</span></label>
         <label class="field"><span>Pause nach jedem Satz</span><select data-bind="exf-rest">${rests.map(([v, t]) => `<option value="${v ?? ''}" ${v === d.rest ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
         <label class="field"><span>Notiz (Technik, Geräte-Einstellung …)</span><textarea data-bind="exf-note" rows="2" placeholder="z. B. Sitz Stufe 4, Griff eng">${esc(d.note)}</textarea></label>
@@ -1355,6 +1361,11 @@ const actions = {
     if (!d.name) { toast('Gib der Übung einen Namen'); l.el.querySelector('#exf-name')?.focus(); return; }
     if (D.exercises.some(e => e.id !== d.id && !e.archived && norm(e.name) === norm(d.name))) { toast('Diese Übung gibt es schon'); return; }
     const i = D.exercises.findIndex(e => e.id === d.id);
+    if (d.equip !== 'lh') d.bar = null;
+    const delta = (d.bar || 0) - (l.origBar || 0);
+    if (delta && l.el.querySelector('#exf-shift')?.checked) {
+      for (const w of D.workouts) for (const e of w.entries || []) if (e.exId === d.id) for (const st of e.sets) if (st.w != null) st.w = Math.round((st.w + delta) * 100) / 100;
+    }
     if (i >= 0) D.exercises[i] = d; else D.exercises.push(d);
     save();
     const cb = l.onSaved;
@@ -1429,7 +1440,7 @@ const actions = {
   'tpl-remove'() {
     const id = topLayer().draft.id;
     confirmSheet({ title: 'Routine löschen?', text: 'Deine Trainings in der Chronik bleiben erhalten.', ok: 'Löschen', danger: true,
-      onOk: () => { D.templates = D.templates.filter(t => t.id !== id); save(); closeLayer(render); } });
+      onOk: () => { D.templates = D.templates.filter(t => t.id !== id); if (id.startsWith('tpl-')) D.removedSeedTpls.push(id); save(); closeLayer(render); } });
   },
 
   // Import
@@ -1487,9 +1498,10 @@ document.addEventListener('click', ev => {
 
 function setInput(t) {
   const row = t.closest('.set-row');
-  const s = D.active.entries[+row.dataset.e].sets[+row.dataset.s];
+  const en = D.active.entries[+row.dataset.e], s = en.sets[+row.dataset.s];
   const f = t.dataset.f;
   s[f] = f === 't' ? parseTime(t.value) : f === 'b' ? (t.value === '' ? null : +t.value) : num(t.value);
+  if (f === 'w' && s.w != null) s.w += barOf(exById(en.exId)); // Scheiben + Stange = Gesamtgewicht
   if (f === 'b') t.classList.toggle('empty', t.value === '');
   save();
 }
@@ -1506,6 +1518,7 @@ document.addEventListener('change', ev => {
   if (t.matches('.val[data-f="t"]')) { const v = parseTime(t.value); t.value = v == null ? '' : fmtTime(v); return; }
   if (t.matches('select.val')) { setInput(t); return; }
   if (t.id === 'imp-bw') { paintLayer(); return; }
+  if (t.dataset.bind === 'exf-bar') { paintLayer(); return; } // Hinweis zum Anpassen alter Einträge einblenden
   if (t.id === 'restore-file') { restoreFrom(t.files[0]); t.value = ''; return; }
   if (t.id === 'gymrun-file') { importGymRun(t.files[0]); t.value = ''; return; }
   if (t.matches('select, input[type=checkbox], input[type=date]')) bind(t);
@@ -1535,6 +1548,7 @@ function bind(t) {
     case 'exf-side': l.draft.perSide = t.checked; return;
     case 'exf-rest': l.draft.rest = t.value === '' ? null : +t.value; return;
     case 'exf-note': l.draft.note = t.value; return;
+    case 'exf-bar': l.draft.bar = num(t.value) || null; return;
     case 'set-name': S.name = t.value.trim(); break;
     case 'set-bw': S.bodyweight = num(t.value); break;
     case 'set-rest': S.rest = +t.value; break;
