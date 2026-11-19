@@ -360,3 +360,36 @@ select.val.empty{color:var(--muted);font-weight:500}
 .variant{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-2);font-weight:600;font-size:14px;line-height:1.3;text-align:left}
 .variant small,.vt small{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:650}
 .vt{display:flex;flex-direction:column;align-items:flex-start;gap:1px;font-size:13.5px;line-height:1.25;padding:6px 0;text-align:left}
+
+/* Alternativen je Platz */
+.alt-row{display:flex;flex-direction:column;gap:6px;margin:2px 0 10px}
+.alt-row>span{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:650}
+.alt-row .chip{min-height:32px;padding:0 12px;font-size:13px}
+.slot-alts{margin-top:8px}
+
+.slot-actions{flex-wrap:wrap;row-gap:2px}
+.slot-actions button{white-space:nowrap}
+
+/* Intervall-Timer */
+.tcard{display:flex;flex-direction:column;gap:10px;text-align:left;border-left:3px solid var(--k-hybrid)}
+.tcard .btn-row{margin-top:0}
+.tcard.run{flex-direction:row;justify-content:space-between;align-items:center;font-weight:650}
+.tcard.done{border-left-color:var(--accent)}
+.timer-page{display:flex;flex-direction:column;min-height:100%;--ph:var(--k-hybrid)}
+.timer-page.ph-change,.timer-page.ph-prep{--ph:var(--muted)}
+.timer-page.ph-rest{--ph:var(--k-lauf)}
+.tm-top{display:flex;align-items:center;justify-content:space-between;margin:0 -6px}
+.tm-voice{font-size:20px}
+.tm-prog{height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden;margin:6px 0 0}
+.tm-prog i{display:block;height:100%;width:0;background:var(--ph);transition:width .25s linear}
+.tm-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:20px 0}
+.tm-phase{font-size:14px;text-transform:uppercase;letter-spacing:.14em;font-weight:700;color:var(--ph)}
+.tm-name{font-size:32px;line-height:1.15;max-width:100%}
+.tm-name small{display:block;font-size:14px;font-weight:600;color:var(--muted);letter-spacing:0;margin-bottom:4px}
+.tm-clock{position:relative;width:min(72vw,300px);aspect-ratio:1;margin:14px 0 8px;display:grid;place-items:center}
+.tm-clock svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.tm-track{fill:none;stroke:var(--surface-2);stroke-width:10}
+.tm-bar{fill:none;stroke:var(--ph);stroke-width:10;stroke-linecap:round;stroke-dasharray:565.5;transition:stroke-dashoffset .25s linear}
+#tm-left{font-size:clamp(56px,20vw,92px);font-weight:750;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.tm-ctrl{margin-top:auto}
+.timer-page.done .tm-center h1{font-size:30px}
