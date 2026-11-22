@@ -128,6 +128,7 @@
   <div class="card flush" id="today-tasks"></div>
 
   <div id="low-hint"></div>
+  <div id="idea-week"></div>
   <div id="memory"></div>
 
   <h2 class="sec">Mini-Maus-Countdown</h2>
@@ -199,9 +200,33 @@
 
 <!-- MAUSELOCH -->
 <section class="view" id="v-mehr">
-  <h2 class="sec">Mauseloch · gemeinsame Infos</h2>
+  <div class="chips subtabs" id="m-tabs">
+    <button class="chip on" data-m="pinnwand">📌 Pinnwand</button>
+    <button class="chip" data-m="infos">📶 Infos</button>
+    <button class="chip" data-m="vertraege">📑 Verträge</button>
+    <button class="chip" data-m="tagebuch">📖 Tagebuch</button>
+    <button class="chip" data-m="baby">👶 Baby</button>
+  </div>
+
+  <div class="mpane on" id="m-pinnwand">
+  <h2 class="sec">Ideen-Pinnwand <span class="r"><button id="add-idea">+ Idee</button></span></h2>
+  <div class="chips" id="i-chips"></div>
+  <div id="ideas" style="margin-top:10px"></div>
+  </div>
+
+  <div class="mpane" id="m-infos">
+  <h2 class="sec">Gemeinsame Infos</h2>
   <div class="notes" id="notes"></div>
 
+  <h2 class="sec">Einstellungen</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row"><span class="t"><b>Einladungscode</b><small>für die zweite Maus zum Beitreten</small></span><b id="invite-code" style="font-size:20px;letter-spacing:.1em"></b></div>
+    <button class="btn soft" id="edit-due">👶 Geburtstermin ändern</button>
+    <button class="btn soft" id="sign-out">Abmelden</button>
+  </div>
+  </div>
+
+  <div class="mpane" id="m-vertraege">
   <h2 class="sec">Verträge 📑 <span class="r"><button id="add-contract">+ Neu</button></span></h2>
   <div class="card" id="contract-sum"></div>
   <div class="chips" id="c-chips" style="margin-top:10px">
@@ -211,30 +236,46 @@
     <button class="chip" data-f="m">Müßmaus</button>
   </div>
   <div class="card flush" id="contracts" style="margin-top:10px"></div>
+  </div>
 
+  <div class="mpane" id="m-tagebuch">
   <h2 class="sec">Mäuse-Momente 📖 <span class="r muted">unser Tagebuch</span></h2>
   <form class="card" id="f-diary" autocomplete="off">
     <div class="add"><input id="diary-in" placeholder="Was war heute schön?" aria-label="Moment eintragen" enterkeyhint="done"><button aria-label="Eintragen">+</button></div>
     <div class="emo" id="emo"></div>
   </form>
   <div class="diary" id="diary"></div>
+  </div>
 
+  <div class="mpane" id="m-baby">
   <h2 class="sec">Mini-Maus-Checkliste <span class="r"><button id="add-baby">+ Neu</button></span></h2>
   <div class="card flush" id="baby"></div>
-
-  <h2 class="sec">Einstellungen</h2>
-  <div class="card" style="display:flex;flex-direction:column;gap:10px">
-    <div class="row"><span class="t"><b>Einladungscode</b><small>für die zweite Maus zum Beitreten</small></span><b id="invite-code" style="font-size:20px;letter-spacing:.1em"></b></div>
-    <button class="btn soft" id="edit-due">👶 Geburtstermin ändern</button>
-    <button class="btn soft" id="sign-out">Abmelden</button>
   </div>
+
   <p class="foot">Die Milzmäuse · mit 🧀 gebaut</p>
+</section>
+
+<!-- FUTTER -->
+<section class="view" id="v-futter">
+  <h2 class="sec">Rezept holen 🍳</h2>
+  <form class="card" id="f-import" autocomplete="off" style="display:flex;flex-direction:column;gap:10px">
+    <div class="add"><input id="import-url" type="url" inputmode="url" placeholder="KptnCook- oder Rezept-Link" aria-label="Rezept-Link" enterkeyhint="go"><button aria-label="Rezept holen">→</button></div>
+    <div class="row">
+      <button type="button" class="btn soft" id="paste-link">📋 Link einfügen</button>
+      <button type="button" class="btn soft" id="paste-text">✍️ Zutaten als Text</button>
+    </div>
+    <p class="small muted" id="import-hint">In KptnCook auf „Teilen“ tippen und Milzmäuse wählen, oder den Link kopieren und hier einfügen.</p>
+  </form>
+
+  <h2 class="sec">Rezeptbox <span class="r muted" id="recipe-cnt"></span></h2>
+  <div id="recipes"></div>
 </section>
 
 <nav class="tabs" id="tabs">
   <button class="on" data-v="heute"><span class="i">🏠</span>Heute</button>
   <button data-v="aufgaben"><span class="i">🧹</span>Aufgaben</button>
   <button data-v="einkauf"><span class="i">🛒</span>Einkauf<span class="dot" id="shop-dot" hidden></span></button>
+  <button data-v="futter"><span class="i">🥗</span>Futter</button>
   <button data-v="mehr"><span class="i">🕳️</span>Mauseloch</button>
 </nav>
 </main>

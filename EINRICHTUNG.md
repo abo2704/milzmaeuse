@@ -67,6 +67,19 @@ Fertig – ab jetzt ist alles live geteilt. 🧀
 
 ---
 
+## Rezept-Import (Supabase Edge Function)
+
+Damit die App Rezept-Links (KptnCook, Chefkoch, …) auslesen kann, braucht es eine kleine Server-Funktion:
+
+1. Supabase → links **Edge Functions** → **Deploy a new function** → **Via Editor**.
+2. Name: `recipe-import` (genau so).
+3. Den kompletten Inhalt von `supabase/functions/recipe-import/index.ts` einfügen → **Deploy**.
+4. In den Funktions-**Settings** „Verify JWT with legacy secret“ **ausschalten** → *Save changes*.
+   (Die Anmeldung prüft die Funktion selbst – so klappt es auch mit den neuen Supabase-Schlüsseln.)
+
+**Teilen aus KptnCook:** Android → *Teilen → Milzmäuse* (geht, sobald die App installiert ist; ggf. einmal
+neu installieren). iPhone → *Link kopieren* → in der App unter **Futter** auf **📋 Link einfügen**.
+
 ## Später: Neue Funktionen
 
 Claude Code im Ordner `milzmaeuse` öffnen und beschreiben, was ihr wollt. Danach in GitHub Desktop

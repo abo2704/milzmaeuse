@@ -1,5 +1,6 @@
 import { createDb, DEMO, TABLES } from './db.js';
 import { SEED, DISHES, CHAINS } from './seed.js';
+import { parseLine, checkAgainstStock, matchesStock, fmtQty, estimate, pregnancyWarnings, splitLines, findUrl } from './recipes.js';
 import { CATS, QUICK, monthly, contractStatus, statusTag, fmtDate, contractIcs, HELP, letter } from './contracts.js';
 import { PRAISE, PRAISE_BIG, PARTNER, OVERDUE, pick, fill, levelOf, AISLES, guessAisle } from './texts.js';
 
@@ -108,7 +109,7 @@ function infoSheet(title, html, actions = []) {
 /* ============ Laden & Live-Sync ============ */
 async function loadAll() {
   // Tabellen aus späteren Erweiterungen dürfen fehlen, bis das SQL in Supabase ausgeführt wurde
-  const OPTIONAL = ['contracts'];
+  const OPTIONAL = ['contracts', 'ideas', 'recipes'];
   S.missing = [];
   const safeList = t => db.list(t).catch(e => { if (OPTIONAL.includes(t)) { S.missing.push(t); return []; } throw e; });
   const [hh, mem, ...lists] = await Promise.all([db.household(), db.members(), ...TABLES.map(safeList)]);
@@ -132,6 +133,14 @@ function scheduleReload(t) {
 }
 const seenThanks = new Set();
 function onChange(t, p) {
+  // Pinnwand: Pfoten und neue Ideen der anderen Maus kurz melden (Vergleich mit dem Stand vor dem Neuladen)
+  if (t === 'ideas' && p?.new && S.me) {
+    const old = S.ideas.find(x => x.id === p.new.id);
+    if (p.eventType === 'UPDATE' && old && (p.new.paws || []).includes(other()) && !(old.paws || []).includes(other()))
+      toast(`🐾 ${NAME(other())} setzt eine Pfote auf „${p.new.title}“`, DUR.important);
+    if (p.eventType === 'INSERT' && p.new.created_by && p.new.created_by !== S.me)
+      toast(`💡 Neue Idee von ${NAME(p.new.created_by)}: „${p.new.title}“`, DUR.important);
+  }
   scheduleReload(t);
   if (t !== 'task_log' || !p?.new) return;
   const l = p.new;
@@ -227,6 +236,13 @@ async function startApp() {
   S.task_log.filter(l => l.thanked).forEach(l => seenThanks.add(l.id));
   computeAway();
   renderAll();
+  // Über "Teilen → Milzmäuse" (Android) geöffnet? Dann Rezept direkt importieren.
+  const sp = new URLSearchParams(location.search);
+  const shared = [sp.get('url'), sp.get('text'), sp.get('title')].map(findUrl).find(Boolean);
+  if (shared) {
+    history.replaceState(null, '', location.pathname + (sp.has('demo') ? '?demo' : ''));
+    showView('futter'); importFrom(shared);
+  }
   if (started) return;
   started = true;
   db.onChange(onChange, S.missing);
@@ -253,7 +269,7 @@ function renderAll() {
   if (!S.household) return;
   $('#greet').textContent = `Moin ${NAME(S.me)} 🐾`;
   $$('#demo-who button').forEach(x => x.classList.toggle('on', x.dataset.who === S.me));
-  renderHeute(); renderTasks(); renderRewards(); renderShop(); renderStock(); renderNotes(); renderContracts(); renderDiary(); renderBaby(); renderSettings();
+  renderHeute(); renderTasks(); renderRewards(); renderShop(); renderStock(); renderNotes(); renderContracts(); renderDiary(); renderBaby(); renderSettings(); renderIdeas(); renderRecipes();
 }
 
 const pointLogs = () => S.task_log.filter(l => l.kind !== 'reward');
@@ -660,9 +676,16 @@ function renderStock() {
       }).join('') + (low.some(s => !onList(s.name)) ? '<button class="btn" id="buy-all" style="margin-top:10px">🛒 Alles Knappe auf die Liste</button>' : '')
     : '<p class="empty">Alles gut gefüllt. Die Vorratskammer ist mäuserich! 🐭</p>';
   const has = n => S.stock_items.some(s => s.name.toLowerCase() === n.toLowerCase() && Number(s.qty) > 0);
-  $('#cookable').innerHTML = DISHES.map(d => ({ ...d, miss: d.need.filter(x => !has(x)) }))
-    .sort((a, b) => a.miss.length - b.miss.length)
-    .map(d => `<div class="cook"><span class="e">${d.e}</span><div class="t"><b>${d.n}</b><small>${d.miss.length ? 'fehlt: ' + d.miss.join(', ') : 'alles da, sofort kochbar'} · ${d.p} g Eiweiß</small></div><span class="tag ${d.miss.length ? 'cheese' : 'green'}">${d.miss.length ? (d.need.length - d.miss.length) + '/' + d.need.length : '✅'}</span></div>`).join('');
+  // Eigene Rezepte aus der Rezeptbox + feste Ideen; sortiert nach "am wenigsten fehlt"
+  const fromBox = S.recipes.map(r => {
+    const chk = checkAgainstStock(r.ingredients.map(parseLine), S.stock_items).filter(x => x.status !== 'grund');
+    return { e: '🍳', n: esc(r.title), p: estimate(r.ingredients.map(parseLine), r.servings).protein, need: chk.map(x => x.key), miss: chk.filter(x => x.status === 'fehlt').map(x => esc(x.key)), rid: r.id };
+  });
+  const fixed = DISHES.map(d => ({ ...d, miss: d.need.filter(x => !has(x)) }));
+  $('#cookable').innerHTML = fromBox.concat(fixed)
+    .sort((a, b) => a.miss.length / a.need.length - b.miss.length / b.need.length)
+    .slice(0, 8)
+    .map(d => `<div class="cook" ${d.rid ? `data-recipe="${d.rid}" style="cursor:pointer"` : ''}><span class="e">${d.e}</span><div class="t"><b>${d.n}</b><small>${d.miss.length ? 'fehlt: ' + d.miss.slice(0, 4).join(', ') + (d.miss.length > 4 ? ' …' : '') : 'alles da, sofort kochbar'} · ≈ ${d.p} g Eiweiß</small></div><span class="tag ${d.miss.length ? 'cheese' : 'green'}">${d.miss.length ? (d.need.length - d.miss.length) + '/' + d.need.length : '✅'}</span></div>`).join('');
   const groups = AREAS.filter(a => S.stock_items.some(s => s.area === a)).concat([...new Set(S.stock_items.map(s => s.area))].filter(a => !AREAS.includes(a)));
   $('#stock').innerHTML = groups.map(g => `<div class="aisle">${esc(g)}</div><div class="card flush">${S.stock_items.filter(s => s.area === g).sort((a, b) => a.name.localeCompare(b.name)).map(s => `<div class="stock"><button class="t" data-edit-stock="${s.id}" style="text-align:left"><b>${esc(s.name)}</b><small>${esc(s.unit)} · Ziel ${s.min_qty}</small></button>${isLow(s) ? `<span class="tag ${Number(s.qty) ? 'cheese' : 'red'}">${Number(s.qty) ? 'knapp' : 'leer'}</span>` : ''}<div class="step"><button data-d="-1" data-s="${s.id}" aria-label="weniger">−</button><b>${s.qty}</b><button data-d="1" data-s="${s.id}" aria-label="mehr">+</button></div></div>`).join('')}</div>`).join('')
     || '<p class="empty">Noch nichts im Vorrat.</p>';
@@ -795,6 +818,227 @@ document.addEventListener('click', e => {
   const ct = S.contracts.find(x => x.id === c.dataset.contract); if (ct) showContract(ct);
 });
 
+/* ---------- Mauseloch-Reiter ---------- */
+function showMPane(m) {
+  $$('#m-tabs .chip').forEach(x => x.classList.toggle('on', x.dataset.m === m));
+  $$('#v-mehr .mpane').forEach(x => x.classList.toggle('on', x.id === 'm-' + m));
+  store.set('mm-mpane', m);
+}
+$('#m-tabs').onclick = e => { const b = e.target.closest('.chip'); if (b) { showMPane(b.dataset.m); scrollTo({ top: 0 }); } };
+showMPane(store.get('mm-mpane') || 'pinnwand');
+const needSql = file => `<div class="card"><p class="small" style="font-weight:700">🛠️ Dafür muss einmalig <b>supabase/${file}</b> im Supabase SQL Editor ausgeführt werden. Danach die App neu laden.</p></div>`;
+
+/* ---------- Ideen-Pinnwand ---------- */
+const IDEA_CATS = {
+  wohnung: ['🏠', 'Wohnung'], anschaffungen: ['🛍️', 'Anschaffungen'], ausfluege: ['✈️', 'Ausflüge'], restaurants: ['🍽️', 'Restaurants'],
+  geschenke: ['🎁', 'Geschenke'], baby: ['👶', 'Baby'], app: ['💡', 'App-Wünsche'],
+};
+const IDEA_STATUS = { idee: '💭 Idee', geplant: '📅 Geplant', erledigt: '✅ Erledigt' };
+let iFilter = 'all', showDoneIdeas = false;
+function ideaCard(i) {
+  const [e, n] = IDEA_CATS[i.category] || ['📌', 'Sonstiges'];
+  const paws = i.paws || [], mine = paws.includes(S.me);
+  const link = /^https?:\/\//.test(i.link) ? `<a class="paw" href="${esc(i.link)}" target="_blank" rel="noopener" data-stop>🔗</a>` : '';
+  return `<div class="idea ${i.status === 'erledigt' ? 'done' : ''}" data-idea="${i.id}" role="button" tabindex="0">
+    <span class="cat">${e} ${n}</span><b>${esc(i.title)}</b>${i.body ? `<p>${esc(i.body)}</p>` : ''}
+    <div class="foot2"><button class="paw ${mine ? 'on' : ''}" data-paw="${i.id}" aria-label="Pfote draufsetzen">🐾 ${paws.length || ''}</button>${link}
+    <span class="small muted" style="margin-left:auto;font-weight:800">${esc(NAME(i.created_by)).slice(0, 3)}</span></div></div>`;
+}
+function renderIdeas() {
+  if (S.missing?.includes('ideas')) { $('#ideas').innerHTML = needSql('004_pinnwand_rezepte.sql'); $('#i-chips').innerHTML = ''; $('#add-idea').hidden = true; return; }
+  $('#add-idea').hidden = false;
+  const open = S.ideas.filter(i => i.status !== 'erledigt');
+  $('#i-chips').innerHTML = `<button class="chip ${iFilter === 'all' ? 'on' : ''}" data-f="all">Alle ${open.length || ''}</button>`
+    + Object.entries(IDEA_CATS).map(([k, [e, n]]) => { const c = open.filter(i => i.category === k).length; return `<button class="chip ${iFilter === k ? 'on' : ''}" data-f="${k}">${e} ${n}${c ? ' ' + c : ''}</button>`; }).join('');
+  const list = S.ideas.filter(i => iFilter === 'all' || i.category === iFilter);
+  const sort = a => a.sort((x, y) => (y.paws?.length || 0) - (x.paws?.length || 0) || y.created_at.localeCompare(x.created_at));
+  const planned = sort(list.filter(i => i.status === 'geplant')), ideas = sort(list.filter(i => i.status === 'idee')), done = list.filter(i => i.status === 'erledigt').sort((a, b) => (b.done_at || '').localeCompare(a.done_at || ''));
+  const block = (title, arr) => arr.length ? `<div class="aisle">${title}</div><div class="ideas">${arr.map(ideaCard).join('')}</div>` : '';
+  $('#ideas').innerHTML = (planned.length + ideas.length ? block('📅 Geplant', planned) + block('💭 Ideen', ideas) : '<p class="empty">Noch keine offenen Ideen. Was wolltet ihr schon immer mal machen? 💡</p>')
+    + (done.length ? `<div class="aisle row" style="justify-content:space-between">✅ Erledigt (${done.length})<button class="link" id="toggle-done-ideas">${showDoneIdeas ? 'ausblenden' : 'anzeigen'}</button></div>${showDoneIdeas ? `<div class="ideas">${done.map(ideaCard).join('')}</div>` : ''}` : '');
+}
+const ideaFields = (withTask) => [
+  [{ k: 'category', label: 'Kategorie', type: 'select', options: Object.entries(IDEA_CATS).map(([k, [e, n]]) => [k, `${e} ${n}`]) },
+   { k: 'status', label: 'Status', type: 'select', options: Object.entries(IDEA_STATUS) }],
+  { k: 'title', label: 'Idee', req: true, ph: 'z. B. Kinderwagen ausprobieren' },
+  { k: 'body', label: 'Details (optional)', type: 'textarea', ph: 'Gedanken, Preis, Ort …' },
+  { k: 'link', label: 'Link (optional)', type: 'url', ph: 'https://…' },
+  ...(withTask ? [{ k: 'make_task', label: '🧹 Als Aufgabe anlegen<small>Landet im Putz-Parcours, die Idee wird auf „Geplant“ gesetzt</small>', type: 'checkbox' }] : []),
+];
+async function saveIdea(v, old) {
+  const { make_task, ...patch } = v;
+  if (make_task && patch.status === 'idee') patch.status = 'geplant';
+  patch.done_at = patch.status === 'erledigt' ? (old?.done_at || new Date().toISOString()) : null;
+  let row = old;
+  if (old) await db.update('ideas', old.id, patch);
+  else [row] = await db.insert('ideas', { ...patch, created_by: S.me, paws: [] });
+  if (make_task) { await db.insert('tasks', { name: patch.title, points: 10, minutes: 30, assignee: 'b', due: today() }); toast('🧹 Als Aufgabe angelegt'); }
+  if (patch.status === 'erledigt' && old?.status !== 'erledigt' && confirm('Erledigt! 🎉 Als Mäuse-Moment ins Tagebuch übernehmen?')) {
+    await db.insert('diary', { body: patch.title, emoji: (IDEA_CATS[patch.category] || ['💛'])[0], day: today(), created_by: S.me });
+    toast('📖 Im Tagebuch festgehalten');
+  }
+  return row;
+}
+$('#add-idea').onclick = () => sheet({
+  title: 'Neue Idee 💡', fields: ideaFields(true), saveLabel: 'Anpinnen',
+  values: { category: iFilter === 'all' ? 'wohnung' : iFilter, status: 'idee' }, onSave: v => saveIdea(v),
+});
+$('#i-chips').onclick = e => { const c = e.target.closest('.chip'); if (c) { iFilter = c.dataset.f; renderIdeas(); } };
+$('#ideas').addEventListener('click', async e => {
+  if (e.target.closest('[data-stop]')) return;
+  if (e.target.closest('#toggle-done-ideas')) { showDoneIdeas = !showDoneIdeas; return renderIdeas(); }
+  const pw = e.target.closest('[data-paw]');
+  if (pw) {
+    const i = S.ideas.find(x => x.id === pw.dataset.paw), paws = i.paws || [];
+    const on = !paws.includes(S.me);
+    i.paws = on ? [...paws, S.me] : paws.filter(x => x !== S.me); renderIdeas();
+    if (on) crumbs(pw);
+    return act(() => db.update('ideas', i.id, { paws: i.paws }));
+  }
+  const card = e.target.closest('[data-idea]'); if (!card) return;
+  const i = S.ideas.find(x => x.id === card.dataset.idea);
+  sheet({ title: 'Idee bearbeiten', fields: ideaFields(i.status !== 'erledigt'), values: i, onSave: v => saveIdea(v, i), onDelete: () => db.remove('ideas', i.id) });
+});
+function renderIdeaOfWeek() {
+  const open = S.ideas.filter(i => i.status === 'idee').sort((a, b) => a.created_at.localeCompare(b.created_at));
+  if (!open.length) { $('#idea-week').innerHTML = ''; return; }
+  const wk = Math.floor((weekStart() - new Date(2026, 0, 5)) / (7 * 864e5));
+  const i = open[((wk % open.length) + open.length) % open.length], [e] = IDEA_CATS[i.category] || ['💡'];
+  $('#idea-week').innerHTML = `<h2 class="sec">💡 Idee der Woche</h2><button class="card row" id="goto-ideas" style="width:100%;text-align:left;background:var(--cheese-soft);border:0"><span style="font-size:26px">${e}</span><span class="t"><b style="white-space:normal">${esc(i.title)}</b><small>Steht schon eine Weile auf der Pinnwand. Wie wär's? 🐾 ${(i.paws || []).length}</small></span><span class="muted">›</span></button>`;
+}
+$('#idea-week').onclick = e => { if (e.target.closest('#goto-ideas')) { showView('mehr'); showMPane('pinnwand'); } };
+
+/* ---------- Rezeptbox ---------- */
+const DEFAULT_SERVINGS = 4; // Abendessen + Mittag zum Mitnehmen
+function renderRecipes() {
+  renderIdeaOfWeek();
+  if (S.missing?.includes('recipes')) { $('#recipes').innerHTML = needSql('004_pinnwand_rezepte.sql'); return; }
+  const list = S.recipes.slice().sort((a, b) => b.created_at.localeCompare(a.created_at));
+  $('#recipe-cnt').textContent = list.length ? `${list.length} Rezepte` : '';
+  $('#recipes').innerHTML = list.map(r => {
+    const parsed = r.ingredients.map(parseLine), chk = checkAgainstStock(parsed, S.stock_items).filter(x => x.status !== 'grund');
+    const have = chk.filter(x => x.status !== 'fehlt').length, est = estimate(parsed, r.servings);
+    return `<button class="card recipe" data-recipe="${r.id}">${r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<span class="ph">🍳</span>'}
+      <span class="t"><b>${esc(r.title)}</b><small>≈ ${est.protein} g Eiweiß/Portion · ${have}/${chk.length} im Vorrat${r.cooked_count ? ` · ${r.cooked_count}× gekocht` : ''}</small></span></button>`;
+  }).join('') || '<p class="empty">Noch keine Rezepte. Teile eins aus KptnCook oder füge einen Link ein. 🍳</p>';
+}
+const STATUS_ICON = { da: '✅', knapp: '⚠️', fehlt: '🛒', grund: '🧂' };
+
+// Rezeptansicht: data = { title, image, url, servings, ingredients[] }, saved = Datenbankzeile (falls schon gespeichert)
+function openRecipe(data, saved) {
+  let target = DEFAULT_SERVINGS;
+  const parsed = data.ingredients.map(parseLine);
+  const selected = new Set();
+  const chk0 = checkAgainstStock(parsed, S.stock_items);
+  chk0.forEach((x, i) => { if (x.status === 'fehlt' || x.status === 'knapp') selected.add(i); });
+  const body = () => {
+    const f = target / (Number(data.servings) || 2), chk = checkAgainstStock(parsed, S.stock_items);
+    const est = estimate(parsed, data.servings), warn = pregnancyWarnings(parsed);
+    return `${data.image ? `<img class="hero-img" src="${esc(data.image)}" alt="" referrerpolicy="no-referrer">` : ''}
+      ${data.url ? `<a href="${esc(data.url)}" target="_blank" rel="noopener">${/kptncook/.test(data.url) ? 'In KptnCook öffnen ↗' : 'Originalrezept öffnen ↗'}</a>` : ''}
+      <div class="row" style="justify-content:space-between"><span class="servings"><button type="button" data-sv="-1" aria-label="weniger Portionen">−</button><b>${target} Portionen</b><button type="button" data-sv="1" aria-label="mehr Portionen">+</button></span><span class="small muted">Original: ${data.servings}</span></div>
+      <p class="small" style="font-weight:800">≈ ${est.protein} g Eiweiß · ${est.kcal} kcal pro Portion <span class="muted">(geschätzt${est.known < .7 ? ', unvollständig' : ''})</span></p>
+      ${est.protein < 25 ? '<p class="small muted">💡 Eiweiß-Boost: Skyr- oder Joghurt-Topping, ein Ei oder Kichererbsen dazu (+8–12 g).</p>' : ''}
+      ${warn.length ? `<p class="small" style="color:var(--red);font-weight:800">🤰 ${warn.join(' · ')}</p>` : ''}
+      <div class="legend2"><span>✅ da</span><span>⚠️ knapp</span><span>🛒 fehlt</span><span>🧂 Grundvorrat</span></div>
+      <div>${chk.map((x, i) => `<label class="ing"><input type="checkbox" data-ing="${i}" ${selected.has(i) ? 'checked' : ''}><span class="q">${esc(fmtQty(x.qty == null ? null : x.qty * f, x.unit))}</span><span class="n">${esc(x.name)}</span><span class="s" title="${x.status}">${STATUS_ICON[x.status]}</span></label>`).join('')}</div>`;
+  };
+  const rerender = () => { $('#rx-body').innerHTML = body(); };
+  const ensureSaved = async () => {
+    if (saved) return saved;
+    [saved] = await db.insert('recipes', { title: data.title, source_url: data.url || '', image: data.image || '', servings: Number(data.servings) || 2, ingredients: data.ingredients, created_by: S.me });
+    return saved;
+  };
+  const actions = [
+    { label: `🛒 Auf die Liste`, cls: 'pink', onClick: async () => {
+      if (!selected.size) return toast('Nichts ausgewählt. Häkchen bei den Zutaten setzen.');
+      await ensureSaved();
+      const f = target / (Number(data.servings) || 2);
+      const n = await addIngredientsToList([...selected].map(i => ({ ...parsed[i], sq: parsed[i].qty == null ? null : parsed[i].qty * f })), data.title);
+      $('#sheet').close(); toast(`🛒 ${n.added} neu auf der Liste${n.merged ? `, ${n.merged} zusammengefasst` : ''}`, DUR.important);
+    } },
+    ...(saved ? [{ label: '🍳 Gekocht!', onClick: () => cookRecipe(saved, chk0) }]
+      : [{ label: '💾 Speichern', onClick: async () => { await ensureSaved(); $('#sheet').close(); toast('💾 In der Rezeptbox gespeichert'); } }]),
+    ...(saved ? [{ label: '🗑️', onClick: async () => { if (confirm('Rezept aus der Rezeptbox löschen?')) { await db.remove('recipes', saved.id); $('#sheet').close(); } } }] : []),
+  ];
+  infoSheet(esc(data.title), '<div id="rx-body" style="display:flex;flex-direction:column;gap:10px"></div>', actions);
+  rerender();
+  $('#rx-body').addEventListener('click', e => {
+    const sv = e.target.closest('[data-sv]');
+    if (sv) { target = Math.min(12, Math.max(1, target + Number(sv.dataset.sv))); rerender(); }
+  });
+  $('#rx-body').addEventListener('change', e => {
+    const c = e.target.closest('[data-ing]'); if (!c) return;
+    c.checked ? selected.add(Number(c.dataset.ing)) : selected.delete(Number(c.dataset.ing));
+  });
+}
+// Zutaten auf die Einkaufsliste; gleiche Artikel werden zusammengefasst
+async function addIngredientsToList(items, title) {
+  let added = 0, merged = 0;
+  for (const it of items) {
+    const qtyTxt = fmtQty(it.sq, it.unit);
+    const ex = S.shopping_items.find(x => !x.done && (matchesStock(it.key, x.name) || matchesStock(x.name, it.key)));
+    if (ex) {
+      const p = parseLine(`${ex.qty || ''} x`);
+      const q = p.qty != null && p.unit === it.unit && it.sq != null ? fmtQty(p.qty + it.sq, it.unit) : [ex.qty, qtyTxt].filter(Boolean).join(' + ');
+      await db.update('shopping_items', ex.id, { qty: q, source: ex.source || `für: ${title}` });
+      ex.qty = q; merged++;
+    } else {
+      await db.insert('shopping_items', { name: it.key, qty: qtyTxt, add_qty: 1, aisle: guessAisle(it.key), source: `für: ${title}`, created_by: S.me });
+      added++;
+    }
+  }
+  return { added, merged };
+}
+// Gekocht: Vorrat abziehen, Käse verdienen, Zähler hochsetzen
+function cookRecipe(r, chk) {
+  const used = [...new Map(chk.filter(x => x.stock && Number(x.stock.qty) > 0).map(x => [x.stock.id, x.stock])).values()];
+  infoSheet(`🍳 ${esc(r.title)} gekocht?`,
+    (used.length ? `<p class="small muted" style="font-weight:700">Was ist dabei aufgebraucht worden? Wird je 1 vom Vorrat abgezogen.</p>`
+      + used.map(s => `<label class="ing"><input type="checkbox" data-use="${s.id}" checked><span class="n">${esc(s.name)}</span><span class="small muted">noch ${s.qty} ${esc(s.unit)}</span></label>`).join('')
+      : '<p class="small muted">Keine Vorratsartikel betroffen.</p>') + '<p class="small" style="font-weight:800">Kochen zählt als Haushalt: +15 🧀</p>',
+    [{ label: '🍳 Ja, gekocht!', cls: 'pink', onClick: async () => {
+      const ids = $$('#sheet-form [data-use]').filter(c => c.checked).map(c => c.dataset.use);
+      for (const id of ids) { const s = S.stock_items.find(x => x.id === id); if (s) await db.update('stock_items', id, { qty: Math.max(0, Number(s.qty) - 1) }); }
+      await db.update('recipes', r.id, { cooked_count: (r.cooked_count || 0) + 1, last_cooked: today() });
+      const task = { name: `„${r.title}“ gekocht`, points: 15 };
+      const [log] = await db.insert('task_log', { task_name: task.name, points: 15, by_who: S.me });
+      $('#sheet').close(); lastDone = null; praise(task, log);
+    } }]);
+}
+async function importFrom(url) {
+  url = findUrl(url) || url;
+  if (!/^https?:\/\//.test(url)) return toast('Das sieht nicht nach einem Link aus 🤔');
+  const dup = S.recipes.find(r => r.source_url && (r.source_url === url));
+  if (dup) { toast('Steht schon in der Rezeptbox 📦'); return openRecipe({ ...dup, url: dup.source_url }, dup); }
+  $('#import-hint').textContent = '⏳ Rezept wird geholt …';
+  try {
+    const data = await db.importRecipe(url);
+    if (!data?.ingredients?.length) throw new Error('Keine Zutaten gefunden. Tipp: „Zutaten als Text“.');
+    const dup2 = S.recipes.find(r => r.source_url === data.url);
+    if (dup2) { toast('Steht schon in der Rezeptbox 📦'); return openRecipe({ ...dup2, url: dup2.source_url }, dup2); }
+    $('#import-url').value = '';
+    openRecipe(data);
+  } catch (e) { toast('Hoppla: ' + e.message, DUR.important); }
+  finally { $('#import-hint').textContent = 'In KptnCook auf „Teilen“ tippen und Milzmäuse wählen, oder den Link kopieren und hier einfügen.'; }
+}
+$('#f-import').onsubmit = e => { e.preventDefault(); importFrom($('#import-url').value.trim()); };
+$('#paste-link').onclick = async () => {
+  try { const t = await navigator.clipboard.readText(); if (!t) throw new Error(); $('#import-url').value = findUrl(t) || t; importFrom(t); }
+  catch { toast('Zwischenablage nicht lesbar: lange ins Feld tippen und „Einsetzen“ wählen.', DUR.important); $('#import-url').focus(); }
+};
+$('#paste-text').onclick = () => sheet({
+  title: '✍️ Zutaten als Text', saveLabel: 'Weiter',
+  fields: [{ k: 'title', label: 'Rezeptname', req: true }, { k: 'servings', label: 'Für wie viele Portionen?', type: 'number', def: 2 },
+    { k: 'ingredients', label: 'Zutaten (eine pro Zeile)', type: 'textarea', req: true, ph: '200 g Feta\n2 Zwiebeln\n1 EL Olivenöl' },
+    { k: 'url', label: 'Link (optional)', type: 'url' }],
+  onSave: v => setTimeout(() => openRecipe({ title: v.title, servings: v.servings || 2, ingredients: splitLines(v.ingredients), url: v.url, image: '' }), 50),
+});
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-recipe]'); if (!r) return;
+  const x = S.recipes.find(y => y.id === r.dataset.recipe); if (x) openRecipe({ ...x, url: x.source_url }, x);
+});
+
 /* ---------- Mauseloch: Infos ---------- */
 const NOTE_FIELDS = [[{ k: 'emoji', label: 'Emoji', max: 4, def: '📌' }, { k: 'pinned', label: 'Oben anpinnen', type: 'checkbox' }], { k: 'title', label: 'Titel', req: true, ph: 'z. B. Müllabfuhr' }, { k: 'body', label: 'Inhalt', type: 'textarea', ph: 'Alles, was sonst im Chat verloren geht …' }];
 function renderNotes() {
@@ -878,7 +1122,7 @@ function showView(v) {
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) showView(b.dataset.v); };
 
 /* ============ Los geht's ============ */
-const APP_VERSION = 'v6'; // gleich halten mit VERSION in sw.js
+const APP_VERSION = 'v7'; // gleich halten mit VERSION in sw.js
 $('.foot').textContent = `Die Milzmäuse ${APP_VERSION} · mit 🧀 gebaut`;
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // Kommt eine neue Version, einmal automatisch neu laden, damit alte und neue Dateien nicht gemischt laufen

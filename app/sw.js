@@ -1,9 +1,9 @@
 // Service Worker: hält die App-Dateien offline bereit.
 // Bei jeder Änderung an der App VERSION hochzählen, damit die Handys die neue Version holen.
-const VERSION = 'mm-v6';
+const VERSION = 'mm-v7';
 const SHELL = [
   './', 'index.html', 'styles.css', 'config.js', 'manifest.webmanifest',
-  'js/main.js', 'js/db.js', 'js/seed.js', 'js/texts.js', 'js/contracts.js',
+  'js/main.js', 'js/db.js', 'js/seed.js', 'js/texts.js', 'js/contracts.js', 'js/recipes.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png',
 ];
 

@@ -1,7 +1,7 @@
 // Datenschicht: dieselbe Schnittstelle für Supabase (echt) und Demo-Modus (localStorage).
 import { SUPABASE_URL, SUPABASE_KEY } from '../config.js';
 
-export const TABLES = ['shopping_items', 'stock_items', 'notes', 'diary', 'tasks', 'task_log', 'rewards', 'baby_todos', 'contracts'];
+export const TABLES = ['shopping_items', 'stock_items', 'notes', 'diary', 'tasks', 'task_log', 'rewards', 'baby_todos', 'contracts', 'ideas', 'recipes'];
 export const DEMO = !SUPABASE_URL || !SUPABASE_KEY || new URLSearchParams(location.search).has('demo');
 
 const today = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD in lokaler Zeit
@@ -16,6 +16,8 @@ const DEFAULTS = {
   task_log: () => ({ kind: 'task', thanked: false, done_at: new Date().toISOString() }),
   rewards: () => ({ emoji: '🎁', cost: 250, redeemed_count: 0 }),
   baby_todos: () => ({ hint: '', due_label: '', urgent: false, done: false, sort: 0 }),
+  ideas: () => ({ category: 'wohnung', body: '', link: '', status: 'idee', paws: [], done_at: null }),
+  recipes: () => ({ source_url: '', image: '', servings: 2, ingredients: [], note: '', cooked_count: 0, last_cooked: null }),
   contracts: () => ({ category: 'sonstiges', provider: '', owner: 'g', cost: 0, billing: 'monat', end_date: null, notice_months: 1, renewal_months: 0, remind_weeks: 6, price_until: null, customer_no: '', note: '' }),
 };
 
@@ -49,6 +51,16 @@ async function supaDb() {
     async insert(t, row) { return ok(await sb.from(t).insert(Array.isArray(row) ? row : [row], { defaultToNull: false }).select()); },
     async update(t, id, patch) { ok(await sb.from(t).update(patch).eq('id', id)); },
     async remove(t, id) { ok(await sb.from(t).delete().eq('id', id)); },
+    async importRecipe(url) {
+      const { data, error } = await sb.functions.invoke('recipe-import', { body: { url } });
+      if (error) {
+        let msg = error.message;
+        try { msg = (await error.context.json()).error || msg; } catch { /* keine JSON-Antwort */ }
+        if (/not found|404/i.test(msg)) msg = 'Die Funktion „recipe-import“ ist in Supabase noch nicht eingerichtet.';
+        throw new Error(msg);
+      }
+      return data;
+    },
     onChange(cb, skip = []) {
       const ch = sb.channel('milzmaeuse');
       [...TABLES, 'households', 'members'].filter(t => !skip.includes(t)).forEach(t =>
@@ -99,6 +111,8 @@ function demoDb() {
     },
     async remove(t, id) { st.tables[t] = rows(t).filter(x => x.id !== id); save(); emit(t, { eventType: 'DELETE', old: { id } }); },
     onChange(cb) { listeners.push(cb); },
+    // Demo: kein Server → immer das Beispielrezept
+    async importRecipe() { const { DEMO_RECIPE } = await import('./recipes.js'); return { ...DEMO_RECIPE, source: 'kptncook.com (Demo)' }; },
     // nur Demo: zwischen Püßmaus und Müßmaus wechseln
     setWho(w) { st.who = w; save(); },
     getWho() { return st.who; },

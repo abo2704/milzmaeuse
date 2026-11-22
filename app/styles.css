@@ -187,9 +187,43 @@ button.stat{cursor:pointer;width:100%}
 .shoes{display:flex;gap:2px;flex-wrap:wrap;margin:10px 0}
 .shoes svg{width:17px;height:17px}
 
+/* Mauseloch-Reiter */
+.subtabs{position:sticky;top:0;z-index:5;background:var(--bg);margin:0 -16px;padding:12px 16px 8px}
+.mpane{display:none}.mpane.on{display:block;animation:fade .2s ease}
+
+/* Pinnwand */
+.ideas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.idea{position:relative;background:var(--cheese-soft);border-radius:18px;padding:14px 12px 10px;display:flex;flex-direction:column;gap:6px;text-align:left;min-height:110px;transform:rotate(-.5deg)}
+.idea:nth-child(3n+2){background:var(--pink-soft);transform:rotate(.6deg)}
+.idea:nth-child(3n){background:var(--pues-soft);transform:rotate(-.2deg)}
+.idea::before{content:"📌";position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:16px}
+.idea .cat{font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.idea b{font-weight:900;font-size:15px;overflow-wrap:anywhere;line-height:1.25}
+.idea p{font-size:13px;font-weight:600;color:var(--muted);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.idea .foot2{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:4px}
+.paw{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:900;padding:5px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.paw.on{background:var(--pink-strong);color:#fff;border-color:var(--pink-strong)}
+.idea.done{opacity:.6;transform:none}
+.idea.done b{text-decoration:line-through}
+
+/* Rezeptbox */
+.recipe{display:flex;gap:12px;align-items:center;padding:10px;text-align:left;width:100%}
+.recipe img,.recipe .ph{width:64px;height:64px;border-radius:14px;object-fit:cover;flex:none;background:var(--surface-2);display:grid;place-items:center;font-size:28px}
+.recipe .t b{white-space:normal;line-height:1.25}
+.ing{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.ing:last-child{border-bottom:0}
+.ing input{width:20px;height:20px;flex:none;accent-color:var(--pink-strong)}
+.ing .q{min-width:64px;font-weight:900;flex:none}
+.ing .n{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere}
+.ing .s{flex:none;font-size:16px}
+.hero-img{width:100%;max-height:180px;object-fit:cover;border-radius:16px}
+.servings{display:flex;gap:6px;align-items:center}
+.servings button{width:36px;height:36px;border-radius:10px;background:var(--surface-2);font-weight:900;font-size:18px}
+.legend2{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;font-weight:800;color:var(--muted)}
+
 /* nav */
 nav.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:10}
-nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:800;color:var(--muted);padding:6px 0;border-radius:12px;position:relative}
+nav.tabs button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:800;color:var(--muted);padding:6px 0;border-radius:12px;position:relative}
 nav.tabs .i{font-size:21px;line-height:1;filter:grayscale(1);opacity:.6;transition:all .2s}
 nav.tabs button.on{color:var(--ink)}
 nav.tabs button.on .i{filter:none;opacity:1;transform:translateY(-2px) scale(1.1)}
