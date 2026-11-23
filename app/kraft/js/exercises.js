@@ -81,7 +81,11 @@ export const SEED_EXERCISES = [
   E('kb-around', 'Kettlebell other way around', 'Core', 'kb', WR),
   E('stuetz-ruder', 'Stütz mit Rudern', 'Core', 'kh', WR, { aliases: ['Stütz mit Ruder'] }),
   E('pull-through', 'Plank Pull-Through (Kurzhantel)', 'Core', 'kh', WR, { note: 'Wdh. = Züge gesamt (links + rechts)' }),
-  E('kb-finisher', 'Kettlebell-Finisher (Halos, Überzüge, Curls)', 'Core', 'kb', WR, { note: '8× Halo links · 8× Halo rechts · 8× Überzug im Stehen · dann Curls bis zur Erschöpfung (Wdh. = Curls)' }),
+  E('kb-finisher', 'Kettlebell-Finisher (alles in einem)', 'Core', 'kb', WR, { note: 'Ältere Variante – neu: Halo, Überzug und Curls als einzelne Übungen' }),
+  // Finisher-Bausteine: einzeln, damit jede Übung eigene kg und Wdh. hat
+  E('kb-halo', 'Kettlebell Halo', 'Arme & Schultern', 'kb', WR, { perSide: true, note: 'Wdh. je Richtung (z. B. 8 links + 8 rechts → 8)' }),
+  E('kb-pullover', 'Überzug im Stehen (Kettlebell)', 'Arme & Schultern', 'kb', WR),
+  E('kb-curl', 'Bizeps-Curls (Kettlebell)', 'Arme & Schultern', 'kb', WR, { note: 'Im Finisher bis zur Erschöpfung' }),
   E('russian-twist', 'Russian Twist (Kettlebell)', 'Core', 'kb', WR, { note: 'Wdh. = Drehungen gesamt (links + rechts)' }),
   E('plank', 'Plank', 'Core', 'kg', ['w', 't']),
   E('seitstuetz', 'Seitstütz', 'Core', 'kg', ['t'], { perSide: true }),
@@ -176,13 +180,15 @@ export const SEED_TEMPLATES = [
     I('Core', 'kaefer', 'kaefer', 3),
     I('Fuß & Reha', 'fuss-reha', 'fuss-reha', 1),
   ] },
-  { id: 'tpl-gk-kern', v: 2, name: 'Ganzkörper Kern', kind: 'kraft', items: [
+  { id: 'tpl-gk-kern', v: 3, name: 'Ganzkörper Kern', kind: 'kraft', items: [
     I('Hüftdominant', 'trapbar', 'sl-rdl'),
     I('Drücken horizontal', 'schraeg-kh', 'liegestuetze', 3, true),
     I('Ziehen vertikal', 'klimmzuege-eng', 'klimmzuege-eng'),
     I('Drücken vertikal', 'military', 'pike', 3, false, { alts: ['schulter-kh-steh', 'schulter-kh-sitz'] }),
     I('Core', 'pull-through', 'pull-through', 3, false, { alts: ['kaefer', 'russian-twist'], multi: true }),
-    I('Finisher', 'kb-finisher', 'kb-finisher', 1),
+    I('Finisher: Halo', 'kb-halo', 'kb-halo', 1, true),
+    I('Finisher: Überzug', 'kb-pullover', 'kb-pullover', 1, true),
+    I('Finisher: Curls', 'kb-curl', 'kb-curl', 1),
     I('Fuß & Reha', 'fuss-reha', 'fuss-reha', 1),
   ] },
   // Deadly Dozen: Intervall-Timer statt Pausen-Timer. Jede Station = ein Platz, jede Runde = ein Satz.
@@ -275,6 +281,9 @@ const MUSCLE_OVERRIDES = {
   'pull-through': M(['seitbauch', 'bauch'], ['schultern', 'ruecken_oben']),
   'kb-finisher': M(['schultern', 'bizeps'], ['seitbauch', 'bauch', 'lat', 'trizeps']),
   'russian-twist': M(['seitbauch'], ['bauch']),
+  'kb-halo': M(['schultern'], ['seitbauch', 'trizeps']),
+  'kb-pullover': M(['lat', 'schultern'], ['bauch', 'trizeps']),
+  'kb-curl': M(['bizeps'], ['unterarme']),
 };
 export function musclesOf(ex) {
   return MUSCLE_OVERRIDES[ex.id] || ex.muscles || GROUP_MUSCLES[ex.group] || M([]);
