@@ -393,3 +393,31 @@ select.val.empty{color:var(--muted);font-weight:500}
 #tm-left{font-size:clamp(56px,20vw,92px);font-weight:750;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
 .tm-ctrl{margin-top:auto}
 .timer-page.done .tm-center h1{font-size:30px}
+
+/* Coach */
+.coach-line{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 10px;padding:8px 11px;border-radius:11px;background:var(--accent-soft);color:var(--ink);font-size:13.5px;font-weight:600;text-align:left}
+.coach-line.t-up{background:var(--gold-soft)}
+.coach-line .ci{margin-left:auto;color:var(--muted);font-weight:500}
+.heavy-tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:6px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.coach-target{font-size:17px;font-weight:700;margin:4px 0 8px}
+.coach-banner{border-left:3px solid var(--accent);padding:12px 14px}
+.coach-banner.warn{border-left-color:var(--gold)}
+.coach-banner p{margin:4px 0 8px;line-height:1.45}
+.srcs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.src{font-size:11.5px;color:var(--muted);text-decoration:none;background:var(--surface-2);border-radius:8px;padding:4px 8px;line-height:1.3}
+.src:active{color:var(--ink)}
+.coach-home{padding:4px 0;text-align:left}
+.coach-page section.card p{line-height:1.5;margin-bottom:6px}
+.coach-list{display:flex;flex-direction:column;margin:6px -16px 0}
+.coach-list .row{padding:10px 16px}
+.coach-h{font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:650;margin:14px 0 6px}
+.vt-t{position:relative;overflow:visible}
+.vt-t b,.mbar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45;border-radius:1px}
+.mob-last{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+.mob-last>div{display:flex;flex-direction:column;gap:4px}
+.mob-last b{font-size:20px}
+.mbar{position:relative;display:block;height:8px;border-radius:4px;background:var(--surface-2)}
+.mbar i{display:block;height:100%;border-radius:4px;background:var(--k-kraft)}
+.foot-chips{gap:5px}
+.foot-chips .chip{min-height:36px;min-width:36px;padding:0;justify-content:center}
+.foot-chips .chip.hi:not(.on){color:var(--gold)}
