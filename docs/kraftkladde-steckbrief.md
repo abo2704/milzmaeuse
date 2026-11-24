@@ -53,4 +53,5 @@
 - **Fortschritt-Seite fertig (v2.1.0):** Konstanz, Kraftentwicklung, größte Steigerungen, Bewegungsmuster-Balance, Hinweise zu Ungleichgewichten, Muskelkarte.
 - **Übungswissen fertig (v2.2.0):** 105 Übungen, jede mit Wissenskarte (Muskeln, Empfehlung, Ausführung, Fehler, Läufer-Nutzen, leichter/schwerer); Varianten im Training per Tipp tauschbar.
 - **Workout-Timer fertig (v2.5.0):** geführte Intervalle (Deadly Dozen als Vorlage), Zeiten automatisch, Wdh. nachtragen, Cardio-Stationen gemeinsam tauschbar, spontaner Timer für jedes Training.
-- Als Nächstes: **Coach** (Steigerungshinweise 8–12, Pausenvorschläge, Wochenziel), optional Synchronisierung PC/Handy über Supabase.
+- **Coach fertig (v2.6.0):** Ziele je Übung im Training, schwere Phase, Pausen nach Studienlage, Wochenvolumen, Fuß-Check + Knie-zur-Wand-Test + Gleichgewichtswochen, Lauf-Hinweis, Rumpf-Check, Beschwerden → Nachbargelenke, Quellen an jedem Hinweis.
+- Offen: optional Synchronisierung PC/Handy über Supabase, Strava-Import, Packliste, Monatsrückblick.
