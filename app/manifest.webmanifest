@@ -11,7 +11,7 @@
   "background_color": "#FBF7F2",
   "theme_color": "#FBF7F2",
   "share_target": {
-    "action": "./",
+    "action": "./index.html",
     "method": "GET",
     "params": { "title": "title", "text": "text", "url": "url" }
   },

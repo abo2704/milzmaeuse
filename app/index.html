@@ -135,7 +135,7 @@
   <div class="card">
     <div class="row"><b style="font-size:18px" id="baby-left"></b><span class="tag pink" style="margin-left:auto" id="baby-date"></span></div>
     <div class="shoes" id="shoes" aria-hidden="true"></div>
-    <div class="small muted">Jeder Schuh ist eine Woche. Die rosa Schühchen sind schon geschafft.</div>
+    <div class="small muted">Jedes Mäuseschühchen ist eine Woche. Die rosa sind schon geschafft, Tapser für Tapser.</div>
   </div>
 </section>
 
@@ -189,11 +189,11 @@
   </div>
 
   <div class="pane" id="p-vorrat">
-    <h2 class="sec">Wird knapp <span class="r muted" id="low-cnt"></span></h2>
+    <h2 class="sec">Mausalarm: wird knapp <span class="r muted" id="low-cnt"></span></h2>
     <div class="card" id="low"></div>
     <h2 class="sec">Aus dem Vorrat kochbar 👩‍🍳</h2>
     <div class="card flush" id="cookable"></div>
-    <h2 class="sec">Vorratskammer <span class="r"><button id="add-stock">+ Neu</button></span></h2>
+    <h2 class="sec">Mäuse-Speisekammer <span class="r"><button id="add-stock">+ Neu</button></span></h2>
     <div id="stock"></div>
   </div>
 </section>
@@ -215,14 +215,14 @@
   </div>
 
   <div class="mpane" id="m-infos">
-  <h2 class="sec">Gemeinsame Infos</h2>
+  <h2 class="sec">Mäuse-Wissen (WLAN &amp; Co.)</h2>
   <div class="notes" id="notes"></div>
 
-  <h2 class="sec">Einstellungen</h2>
+  <h2 class="sec">Stellschrauben im Mausbau ⚙️</h2>
   <div class="card" style="display:flex;flex-direction:column;gap:10px">
     <div class="row"><span class="t"><b>Einladungscode</b><small>für die zweite Maus zum Beitreten</small></span><b id="invite-code" style="font-size:20px;letter-spacing:.1em"></b></div>
     <button class="btn soft" id="edit-due">👶 Geburtstermin ändern</button>
-    <button class="btn soft" id="sign-out">Abmelden</button>
+    <button class="btn soft" id="sign-out">Abmelden (zurück ins Mauseloch)</button>
   </div>
   </div>
 
@@ -241,7 +241,7 @@
   <div class="mpane" id="m-tagebuch">
   <h2 class="sec">Mäuse-Momente 📖 <span class="r muted">unser Tagebuch</span></h2>
   <form class="card" id="f-diary" autocomplete="off">
-    <div class="add"><input id="diary-in" placeholder="Was war heute schön?" aria-label="Moment eintragen" enterkeyhint="done"><button aria-label="Eintragen">+</button></div>
+    <div class="add"><input id="diary-in" placeholder="Was war heute mausgezeichnet?" aria-label="Moment eintragen" enterkeyhint="done"><button aria-label="Eintragen">+</button></div>
     <div class="emo" id="emo"></div>
   </form>
   <div class="diary" id="diary"></div>
@@ -257,7 +257,7 @@
 
 <!-- FUTTER -->
 <section class="view" id="v-futter">
-  <h2 class="sec">Rezept holen 🍳</h2>
+  <h2 class="sec">Futter fassen 🍳</h2>
   <form class="card" id="f-import" autocomplete="off" style="display:flex;flex-direction:column;gap:10px">
     <div class="add"><input id="import-url" type="url" inputmode="url" placeholder="KptnCook- oder Rezept-Link" aria-label="Rezept-Link" enterkeyhint="go"><button aria-label="Rezept holen">→</button></div>
     <div class="row">
@@ -267,7 +267,7 @@
     <p class="small muted" id="import-hint">In KptnCook auf „Teilen“ tippen und Milzmäuse wählen, oder den Link kopieren und hier einfügen.</p>
   </form>
 
-  <h2 class="sec">Rezeptbox <span class="r muted" id="recipe-cnt"></span></h2>
+  <h2 class="sec">Mäuse-Rezeptbox <span class="r muted" id="recipe-cnt"></span></h2>
   <div id="recipes"></div>
 </section>
 
@@ -286,7 +286,7 @@
   <h4 id="pr-h"></h4>
   <p id="pr-t"></p>
   <span class="plus" id="pr-p"></span>
-  <button class="link" id="pr-undo" style="display:block;margin:12px auto 0;font-size:13px">Ups, war ein Versehen</button>
+  <button class="link" id="pr-undo" style="display:block;margin:12px auto 0;font-size:13px">Ups, Mausrutscher! Rückgängig</button>
 </div>
 <div class="push" id="push">
   <div class="label" id="pu-label" hidden></div>

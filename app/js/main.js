@@ -2,7 +2,8 @@ import { createDb, DEMO, TABLES } from './db.js';
 import { SEED, DISHES, CHAINS } from './seed.js';
 import { parseLine, checkAgainstStock, matchesStock, fmtQty, estimate, pregnancyWarnings, splitLines, findUrl } from './recipes.js';
 import { CATS, QUICK, monthly, contractStatus, statusTag, fmtDate, contractIcs, HELP, letter } from './contracts.js';
-import { PRAISE, PRAISE_BIG, PARTNER, OVERDUE, pick, fill, levelOf, AISLES, guessAisle } from './texts.js';
+import { PRAISE, PRAISE_BIG, PARTNER, OVERDUE, EMPTY, TOAST, AWAY, GOAL_REACHED, GOAL_REDEEMED, pick, daily, greeting, fill, levelOf, AISLES, guessAisle } from './texts.js';
+const empty = (k, salt = '') => daily(EMPTY[k], k + salt); // Leertext: täglich wechselnd, flackert nicht
 
 /* ============ Helfer ============ */
 const $ = s => document.querySelector(s);
@@ -36,7 +37,7 @@ function toast(msg, ms = DUR.toast) {
 }
 async function act(fn) {
   try { return await fn(); }
-  catch (e) { console.error(e); toast('Hoppla: ' + (e.message || 'Da ist was schiefgelaufen'), DUR.important); }
+  catch (e) { console.error(e); toast(pick(TOAST.error) + (e.message || 'Da ist was schiefgelaufen'), DUR.important); }
 }
 function crumbs(el) {
   const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top;
@@ -151,7 +152,7 @@ function onChange(t, p) {
   }
   if (p.eventType === 'UPDATE' && l.thanked && l.by_who === S.me && !seenThanks.has(l.id)) {
     seenThanks.add(l.id);
-    toast(`💛 ${NAME(other())} hat dir eine Danke-Pfote geschickt!`, DUR.important);
+    toast(pick(TOAST.gotThanks).replace('{n}', NAME(other())), DUR.important);
   }
 }
 
@@ -267,7 +268,7 @@ $('#demo-who').onclick = async e => {
 /* ============ Rendering ============ */
 function renderAll() {
   if (!S.household) return;
-  $('#greet').textContent = `Moin ${NAME(S.me)} 🐾`;
+  $('#greet').textContent = greeting(NAME(S.me));
   $$('#demo-who button').forEach(x => x.classList.toggle('on', x.dataset.who === S.me));
   renderHeute(); renderTasks(); renderRewards(); renderShop(); renderStock(); renderNotes(); renderContracts(); renderDiary(); renderBaby(); renderSettings(); renderIdeas(); renderRecipes();
 }
@@ -298,7 +299,7 @@ function renderHeute() {
   const reached = tot >= goal;
   const redeemed = S.task_log.some(l => l.kind === 'reward' && new Date(l.done_at) >= ws);
   $('#goal').classList.toggle('reached', reached);
-  $('#g-sub').textContent = redeemed ? 'Eingelöst ✓ Genießt es!' : reached ? 'Ziel erreicht! 🎉 Tippen zum Einlösen' : `Noch ${goal - tot} 🧀 bis zum Ziel · tippen zum Ändern`;
+  $('#g-sub').textContent = redeemed ? daily(GOAL_REDEEMED) : reached ? daily(GOAL_REACHED) : `Noch ${goal - tot} 🧀 bis zum Ziel · tippen zum Ändern`;
   $('#g-reward').textContent = h.reward;
   $('#g-p').style.width = Math.min(100, p / goal * 100) + '%';
   $('#g-m').style.width = Math.max(0, Math.min(100 - p / goal * 100, m / goal * 100)) + '%';
@@ -323,7 +324,7 @@ function renderHeute() {
 
   const due = openTasks().filter(t => t.due <= td && (t.assignee === S.me || t.assignee === 'b'));
   $('#due-cnt').textContent = due.length ? `${due.length} für dich` : '';
-  $('#today-tasks').innerHTML = due.slice(0, 6).map(taskRow).join('') || '<p class="empty">Alles erledigt. Mäuschenstill! 😴</p>';
+  $('#today-tasks').innerHTML = due.slice(0, 6).map(taskRow).join('') || `<p class="empty">${empty('today')}</p>`;
 
   const low = S.stock_items.filter(isLow).length;
   $('#low-hint').innerHTML = low ? `<h2 class="sec">Vorrat</h2><button class="card row" data-go="vorrat" style="width:100%;text-align:left"><span style="font-size:24px">🧺</span><span class="t"><b>${low} ${low === 1 ? 'Artikel wird' : 'Artikel werden'} knapp</b><small>Tippen, um sie auf die Liste zu setzen</small></span><span class="muted">›</span></button>` : '';
@@ -331,7 +332,7 @@ function renderHeute() {
   if (awayInfo) {
     const pts = awayInfo.reduce((a, l) => a + l.points, 0), who = NAME(awayInfo[0].by_who);
     const names = awayInfo.slice(0, 3).map(l => '„' + esc(l.task_name) + '“').join(', ') + (awayInfo.length > 3 ? ' …' : '');
-    $('#away').innerHTML = `<h2 class="sec">Während du weg warst</h2><div class="card away"><b>${esc(who)} hat ${awayInfo.length} ${awayInfo.length === 1 ? 'Aufgabe' : 'Aufgaben'} erledigt (+${pts} 🧀)</b><p class="small" style="margin:4px 0 12px;font-weight:700">${names}. Was für eine Spitzenmaus!</p><div class="row"><button class="btn pink" id="away-thx">💛 Danke-Pfote</button><button class="btn soft" id="away-x" style="width:auto">OK</button></div></div>`;
+    $('#away').innerHTML = `<h2 class="sec">Während du weg warst</h2><div class="card away"><b>${esc(who)} hat ${awayInfo.length} ${awayInfo.length === 1 ? 'Aufgabe' : 'Aufgaben'} erledigt (+${pts} 🧀)</b><p class="small" style="margin:4px 0 12px;font-weight:700">${names}. ${daily(AWAY, 'away')}</p><div class="row"><button class="btn pink" id="away-thx">💛 Danke-Pfote</button><button class="btn soft" id="away-x" style="width:auto">OK</button></div></div>`;
   } else $('#away').innerHTML = '';
 
   const traps = S.contracts.map(c => [c, contractStatus(c)]).filter(([, s]) => s.kind === 'trap').sort((a, b) => a[1].days - b[1].days);
@@ -360,7 +361,7 @@ $('#week-done').onclick = () => {
         return `<div class="aisle row" style="justify-content:space-between">${d === today() ? 'Heute' : parseDay(d).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'short' })}<span style="color:var(--cheese-deep)">+${dl.reduce((a, l) => a + l.points, 0)} 🧀</span></div>`
           + dl.map(l => `<div class="log"><span class="av ${l.by_who}">${l.by_who === 'p' ? 'P' : 'M'}</span><div class="t"><b>${l.kind === 'bonus' ? '💛 ' : ''}${esc(l.task_name)}</b></div><time>${time(l.done_at)}</time><span class="pts">+${l.points}</span></div>`).join('');
       }).join('')
-    : '<p class="empty">Diese Woche ist noch nichts erledigt. Zeit für einen Quick Win! ⚡</p>';
+    : `<p class="empty">${empty('week')}</p>`;
   infoSheet('Erledigt diese Woche 🧀', html);
 };
 
@@ -372,7 +373,7 @@ $('#v-heute').addEventListener('click', async e => {
       for (const l of logs) await db.update('task_log', l.id, { thanked: true });
       await db.insert('task_log', { task_name: 'Danke-Pfote', points: 2, by_who: logs[0].by_who, kind: 'bonus' });
     });
-    toast(`💛 Danke-Pfote an ${NAME(logs[0].by_who)} verschickt (+2 🧀)`);
+    toast(pick(TOAST.thanks).replace('{n}', NAME(logs[0].by_who)));
   }
   const go = e.target.closest('[data-go]');
   if (go) { showView('einkauf'); showPane(go.dataset.go); }
@@ -422,7 +423,7 @@ function renderTasks() {
     tFilter === 'all' || (tFilter === 'due' && t.due <= td) || (tFilter === 'me' && (t.assignee === S.me || t.assignee === 'b')) || (tFilter === 'quick' && t.minutes <= 5));
   const overdue = list.some(t => t.due < td);
   const waiting = tFilter === 'all' ? S.tasks.filter(t => t.chained && t.done_at) : [];
-  $('#tasks').innerHTML = (list.concat(waiting).map(taskRow).join('') || `<p class="empty">${tFilter === 'due' ? 'Nichts fällig. Mäuschenstill! 😴' : 'Keine Aufgaben hier.'}</p>`)
+  $('#tasks').innerHTML = (list.concat(waiting).map(taskRow).join('') || `<p class="empty">${tFilter === 'due' ? empty('tasks') : empty('none')}</p>`)
     + (overdue && tFilter === 'due' ? `<p class="small muted" style="padding:8px 4px">${pick(OVERDUE)}</p>` : '');
 }
 // Käse pro Tag: angetippter Tag zeigt, was erledigt wurde
@@ -434,7 +435,7 @@ function renderDayDetail() {
   const time = iso => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   $('#day-detail').innerHTML = `<h4>${label}<span>${total ? `+${total} 🧀` : ''}</span></h4>`
     + (logs.map(l => `<div class="log"><span class="av ${l.by_who}">${l.by_who === 'p' ? 'P' : 'M'}</span><div class="t"><b>${l.kind === 'bonus' ? '💛 ' : ''}${esc(l.task_name)}</b></div><time>${time(l.done_at)}</time><span class="pts">+${l.points}</span></div>`).join('')
-      || `<p class="empty">${selDay > today() ? 'Dieser Tag kommt erst noch. 🐭' : 'An diesem Tag war Mäuschenstille. 😴'}</p>`);
+      || `<p class="empty">${selDay > today() ? empty('future', selDay) : empty('pastDay', selDay)}</p>`);
 }
 $('#week').addEventListener('click', e => {
   const c = e.target.closest('[data-day]'); if (!c) return;
@@ -488,7 +489,7 @@ $('#praise').addEventListener('click', async e => {
       await db.remove('task_log', log.id); await db.update('tasks', task.id, prev);
       if (next) await db.update('tasks', next.id, prevNext);
     });
-    toast('Rückgängig gemacht. Passiert den besten Mäusen.');
+    toast(pick(TOAST.undo));
     return;
   }
   $('#praise').classList.remove('show');
@@ -577,7 +578,7 @@ function renderRewards() {
   $('#rewards').innerHTML = S.rewards.slice().sort((a, b) => a.cost - b.cost).map(r => {
     const on = cur === `${r.emoji} ${r.name}`;
     return `<div class="contract" data-reward="${r.id}" style="cursor:pointer"><span style="font-size:24px;width:32px;text-align:center">${esc(r.emoji)}</span><div class="t"><b>${esc(r.name)}</b><small>${r.cost} 🧀${r.redeemed_count ? ` · schon ${r.redeemed_count}× eingelöst` : ''}</small></div>${on ? '<span class="tag cheese">Wochenziel</span>' : ''}<button class="more" data-edit-reward="${r.id}" aria-label="Bearbeiten">⋯</button></div>`;
-  }).join('') || '<p class="empty">Noch keine Belohnungen.</p>';
+  }).join('') || `<p class="empty">${empty('rewards')}</p>`;
 }
 const REWARD_FIELDS = [[{ k: 'emoji', label: 'Emoji', max: 4, def: '🎁' }, { k: 'cost', label: 'Kosten 🧀', type: 'number', def: 250 }], { k: 'name', label: 'Belohnung', req: true, ph: 'z. B. Kinoabend' }];
 $('#add-reward').onclick = () => sheet({ title: 'Neue Belohnung', fields: REWARD_FIELDS, saveLabel: 'Anlegen', onSave: v => db.insert('rewards', v) });
@@ -590,7 +591,7 @@ $('#rewards').onclick = e => {
   const row = e.target.closest('[data-reward]'); if (!row) return;
   const r = S.rewards.find(x => x.id === row.dataset.reward);
   act(() => db.updateHousehold(S.household.id, { week_goal: r.cost, reward: `${r.emoji} ${r.name}` }));
-  toast(`Neues Wochenziel: ${r.emoji} ${r.name}`);
+  toast(pick(TOAST.goal).replace('{r}', `${r.emoji} ${r.name}`));
 };
 $('#goal').onclick = async () => {
   const ws = weekStart(), h = S.household;
@@ -603,7 +604,7 @@ $('#goal').onclick = async () => {
       const r = S.rewards.find(x => `${x.emoji} ${x.name}` === h.reward);
       if (r) await db.update('rewards', r.id, { redeemed_count: r.redeemed_count + 1 });
     });
-    toast('🎉 Eingelöst! Viel Spaß, ihr Mäuse!', DUR.important);
+    toast(pick(TOAST.redeemed), DUR.important);
     return;
   }
   showView('aufgaben');
@@ -620,7 +621,7 @@ function renderShop() {
   const open = S.shopping_items.filter(s => !s.done), got = S.shopping_items.filter(s => s.done);
   const row = s => `<div class="item ${s.done ? 'done' : ''}" data-item="${s.id}"><button class="check" aria-label="${esc(s.name)} abhaken">${tick}</button><div class="t"><b>${esc(s.name)}</b>${s.qty || s.source ? `<small>${esc(s.qty)}${s.qty && s.source ? ' · ' : ''}${s.source ? esc(s.source) : ''}</small>` : ''}</div><button class="more" data-edit-item="${s.id}" aria-label="Bearbeiten">⋯</button></div>`;
   const aisles = AISLES.filter(a => open.some(s => s.aisle === a)).concat([...new Set(open.map(s => s.aisle))].filter(a => !AISLES.includes(a)));
-  $('#shop').innerHTML = (open.length ? aisles.map(a => `<div class="aisle">${esc(a)}</div><div class="card flush">${open.filter(s => s.aisle === a).map(row).join('')}</div>`).join('') : '<p class="empty" style="margin-top:16px">Liste ist leer. Der Kühlschrank lacht dich an. 🧀</p>')
+  $('#shop').innerHTML = (open.length ? aisles.map(a => `<div class="aisle">${esc(a)}</div><div class="card flush">${open.filter(s => s.aisle === a).map(row).join('')}</div>`).join('') : `<p class="empty" style="margin-top:16px">${empty('shop')}</p>`)
     + (got.length ? `<div class="aisle row" style="justify-content:space-between">✅ Im Korb (${got.length})<button class="link" id="clear-done">Korb leeren</button></div><div class="card flush" style="opacity:.7">${got.map(row).join('')}</div>` : '');
   $('#shop-cnt').textContent = open.length ? `${open.length} offen` : '';
   $('#shop-dot').hidden = !open.length; $('#shop-dot').textContent = open.length;
@@ -660,7 +661,7 @@ $('#shop').onclick = async e => {
       if (done) toast(`🧺 ${st.name} → Vorrat (${q} ${st.unit})`);
     }
   });
-  if (done && !S.shopping_items.some(x => !x.done && x.id !== s.id)) toast('Alles im Korb! Ab nach Hause, Mäuse 🐭');
+  if (done && !S.shopping_items.some(x => !x.done && x.id !== s.id)) toast(pick(TOAST.cartDone));
 };
 
 /* ---------- Vorrat ---------- */
@@ -674,7 +675,7 @@ function renderStock() {
         const on = onList(s.name);
         return `<div class="stock"><div class="t"><b>${esc(s.name)}</b><small>noch ${s.qty} ${esc(s.unit)} · Ziel ${s.min_qty}</small></div><span class="tag ${Number(s.qty) ? 'cheese' : 'red'}">${Number(s.qty) ? 'knapp' : 'leer'}</span><button class="mini ${on ? 'in' : ''}" data-buy="${s.id}" aria-label="Auf die Einkaufsliste">${on ? '✓' : '🛒'}</button></div>`;
       }).join('') + (low.some(s => !onList(s.name)) ? '<button class="btn" id="buy-all" style="margin-top:10px">🛒 Alles Knappe auf die Liste</button>' : '')
-    : '<p class="empty">Alles gut gefüllt. Die Vorratskammer ist mäuserich! 🐭</p>';
+    : `<p class="empty">${empty('stockOk')}</p>`;
   const has = n => S.stock_items.some(s => s.name.toLowerCase() === n.toLowerCase() && Number(s.qty) > 0);
   // Eigene Rezepte aus der Rezeptbox + feste Ideen; sortiert nach "am wenigsten fehlt"
   const fromBox = S.recipes.map(r => {
@@ -688,7 +689,7 @@ function renderStock() {
     .map(d => `<div class="cook" ${d.rid ? `data-recipe="${d.rid}" style="cursor:pointer"` : ''}><span class="e">${d.e}</span><div class="t"><b>${d.n}</b><small>${d.miss.length ? 'fehlt: ' + d.miss.slice(0, 4).join(', ') + (d.miss.length > 4 ? ' …' : '') : 'alles da, sofort kochbar'} · ≈ ${d.p} g Eiweiß</small></div><span class="tag ${d.miss.length ? 'cheese' : 'green'}">${d.miss.length ? (d.need.length - d.miss.length) + '/' + d.need.length : '✅'}</span></div>`).join('');
   const groups = AREAS.filter(a => S.stock_items.some(s => s.area === a)).concat([...new Set(S.stock_items.map(s => s.area))].filter(a => !AREAS.includes(a)));
   $('#stock').innerHTML = groups.map(g => `<div class="aisle">${esc(g)}</div><div class="card flush">${S.stock_items.filter(s => s.area === g).sort((a, b) => a.name.localeCompare(b.name)).map(s => `<div class="stock"><button class="t" data-edit-stock="${s.id}" style="text-align:left"><b>${esc(s.name)}</b><small>${esc(s.unit)} · Ziel ${s.min_qty}</small></button>${isLow(s) ? `<span class="tag ${Number(s.qty) ? 'cheese' : 'red'}">${Number(s.qty) ? 'knapp' : 'leer'}</span>` : ''}<div class="step"><button data-d="-1" data-s="${s.id}" aria-label="weniger">−</button><b>${s.qty}</b><button data-d="1" data-s="${s.id}" aria-label="mehr">+</button></div></div>`).join('')}</div>`).join('')
-    || '<p class="empty">Noch nichts im Vorrat.</p>';
+    || `<p class="empty">${empty('stock')}</p>`;
 }
 const STOCK_FIELDS = [{ k: 'name', label: 'Produkt', req: true, ph: 'z. B. Haferflocken' }, [{ k: 'qty', label: 'Bestand', type: 'number', def: 1 }, { k: 'min_qty', label: 'Mindestens', type: 'number', def: 1 }], [{ k: 'unit', label: 'Einheit', def: 'Stk.', ph: 'Pck., Dosen …' }, { k: 'area', label: 'Wo?', type: 'select', options: AREAS.map(a => [a, a]), def: 'Vorrat' }]];
 $('#add-stock').onclick = () => sheet({ title: 'Neu in den Vorrat', fields: STOCK_FIELDS, saveLabel: 'Anlegen', onSave: v => db.insert('stock_items', v) });
@@ -708,7 +709,7 @@ $('#p-vorrat').onclick = async e => {
   const b = e.target.closest('[data-buy]');
   if (b) {
     const s = S.stock_items.find(x => x.id === b.dataset.buy);
-    if (onList(s.name)) return toast('Steht schon auf der Liste 👍');
+    if (onList(s.name)) return toast(pick(TOAST.onList));
     await act(() => addLowToList(s)); return toast(`„${s.name}“ steht auf der Liste 🛒`);
   }
   if (e.target.closest('#buy-all')) {
@@ -743,7 +744,7 @@ function renderContracts() {
   $('#contracts').innerHTML = list.map(([c]) => {
     const [cls, txt] = statusTag(c);
     return `<div class="contract" data-contract="${c.id}" style="cursor:pointer"><span style="font-size:24px;width:32px;text-align:center">${CATS[c.category]?.e || '📄'}</span><div class="t"><b>${esc(c.name)}</b><small>${esc(c.provider || OWNER[c.owner])} · ${euro(monthly(c))}/Mon.${c.owner !== 'g' ? ' · ' + OWNER[c.owner] : ''}</small></div><span class="tag ${cls}">${esc(txt)}</span></div>`;
-  }).join('') || '<p class="empty">Noch keine Verträge. Oben einfach antippen und loslegen.</p>';
+  }).join('') || `<p class="empty">${empty('contracts')}</p>`;
 }
 const CONTRACT_FIELDS = [
   [{ k: 'category', label: 'Art', type: 'select', options: Object.entries(CATS).map(([k, v]) => [k, `${v.e} ${v.n}`]) },
@@ -854,7 +855,7 @@ function renderIdeas() {
   const sort = a => a.sort((x, y) => (y.paws?.length || 0) - (x.paws?.length || 0) || y.created_at.localeCompare(x.created_at));
   const planned = sort(list.filter(i => i.status === 'geplant')), ideas = sort(list.filter(i => i.status === 'idee')), done = list.filter(i => i.status === 'erledigt').sort((a, b) => (b.done_at || '').localeCompare(a.done_at || ''));
   const block = (title, arr) => arr.length ? `<div class="aisle">${title}</div><div class="ideas">${arr.map(ideaCard).join('')}</div>` : '';
-  $('#ideas').innerHTML = (planned.length + ideas.length ? block('📅 Geplant', planned) + block('💭 Ideen', ideas) : '<p class="empty">Noch keine offenen Ideen. Was wolltet ihr schon immer mal machen? 💡</p>')
+  $('#ideas').innerHTML = (planned.length + ideas.length ? block('📅 Geplant', planned) + block('💭 Ideen', ideas) : `<p class="empty">${empty('ideas')}</p>`)
     + (done.length ? `<div class="aisle row" style="justify-content:space-between">✅ Erledigt (${done.length})<button class="link" id="toggle-done-ideas">${showDoneIdeas ? 'ausblenden' : 'anzeigen'}</button></div>${showDoneIdeas ? `<div class="ideas">${done.map(ideaCard).join('')}</div>` : ''}` : '');
 }
 const ideaFields = (withTask) => [
@@ -920,7 +921,7 @@ function renderRecipes() {
     const have = chk.filter(x => x.status !== 'fehlt').length, est = estimate(parsed, r.servings);
     return `<button class="card recipe" data-recipe="${r.id}">${r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<span class="ph">🍳</span>'}
       <span class="t"><b>${esc(r.title)}</b><small>≈ ${est.protein} g Eiweiß/Portion · ${have}/${chk.length} im Vorrat${r.cooked_count ? ` · ${r.cooked_count}× gekocht` : ''}</small></span></button>`;
-  }).join('') || '<p class="empty">Noch keine Rezepte. Teile eins aus KptnCook oder füge einen Link ein. 🍳</p>';
+  }).join('') || `<p class="empty">${empty('recipes')}</p>`;
 }
 const STATUS_ICON = { da: '✅', knapp: '⚠️', fehlt: '🛒', grund: '🧂' };
 
@@ -1064,12 +1065,12 @@ $('#emo').onclick = e => {
 function renderDiary() {
   const list = S.diary.slice().sort((a, b) => b.day.localeCompare(a.day) || b.created_at.localeCompare(a.created_at));
   $('#diary').innerHTML = list.map(x => `<div class="entry"><div class="card"><div style="flex:1;min-width:0"><div class="d">${x.day === today() ? 'Heute' : fmtDay(x.day)} · ${esc(NAME(x.created_by))}</div><p>${esc(x.emoji)} ${esc(x.body)}</p></div><button class="more" data-diary="${x.id}" aria-label="Bearbeiten">⋯</button></div></div>`).join('')
-    || '<p class="empty">Noch keine Momente. Der erste schöne Moment wartet schon! ✨</p>';
+    || `<p class="empty">${empty('diary')}</p>`;
 }
 $('#f-diary').onsubmit = e => {
   e.preventDefault(); const v = $('#diary-in').value.trim(); if (!v) return;
   $('#diary-in').value = '';
-  act(async () => { await db.insert('diary', { body: v, emoji: emo, day: today(), created_by: S.me }); toast('📖 Moment festgehalten'); });
+  act(async () => { await db.insert('diary', { body: v, emoji: emo, day: today(), created_by: S.me }); toast(pick(TOAST.diary)); });
 };
 $('#diary').onclick = e => {
   const b = e.target.closest('[data-diary]'); if (!b) return;
@@ -1086,7 +1087,7 @@ const BABY_FIELDS = [{ k: 'name', label: 'Was?', req: true }, { k: 'hint', label
 function renderBaby() {
   const list = S.baby_todos.slice().sort((a, b) => (a.done - b.done) || a.sort - b.sort);
   $('#baby').innerHTML = list.map(b => `<div class="task ${b.done ? 'done' : ''}" data-baby="${b.id}"><button class="check bcheck" aria-label="${esc(b.name)} erledigt">${tick}</button><div class="t wrap"><b>${esc(b.name)}</b><small>${esc(b.hint)}</small></div>${b.done ? '' : `<span class="tag ${b.urgent ? 'red' : 'cheese'}">${esc(b.due_label || 'offen')}</span>`}<button class="more" data-edit-baby="${b.id}" aria-label="Bearbeiten">⋯</button></div>`).join('')
-    || '<p class="empty">Alles erledigt. Mini-Maus kann kommen! 👶</p>';
+    || `<p class="empty">${empty('baby')}</p>`;
 }
 $('#baby').addEventListener('click', e => {
   e.stopPropagation(); // nicht als Haushaltsaufgabe behandeln
@@ -1097,7 +1098,7 @@ $('#baby').addEventListener('click', e => {
   }
   const c = e.target.closest('.bcheck'); if (!c) return;
   const b = S.baby_todos.find(x => x.id === c.closest('[data-baby]').dataset.baby);
-  if (!b.done) { crumbs(c); toast('👶 Abgehakt! Mini-Maus wäre stolz.'); }
+  if (!b.done) { crumbs(c); toast(pick(TOAST.baby)); }
   act(() => db.update('baby_todos', b.id, { done: !b.done }));
 });
 $('#add-baby').onclick = () => sheet({ title: 'Neuer Punkt', fields: BABY_FIELDS, saveLabel: 'Anlegen', onSave: v => db.insert('baby_todos', v) });
@@ -1122,8 +1123,8 @@ function showView(v) {
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) showView(b.dataset.v); };
 
 /* ============ Los geht's ============ */
-const APP_VERSION = 'v9'; // gleich halten mit VERSION in sw.js
-$('.foot').textContent = `Die Milzmäuse ${APP_VERSION} · mit 🧀 gebaut`;
+const APP_VERSION = 'v10'; // gleich halten mit VERSION in sw.js
+$('.foot').textContent = `Die Milzmäuse ${APP_VERSION} · mausgezeichnet mit 🧀 gebaut`;
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // Kommt eine neue Version, einmal automatisch neu laden, damit alte und neue Dateien nicht gemischt laufen
   const hadController = !!navigator.serviceWorker.controller;

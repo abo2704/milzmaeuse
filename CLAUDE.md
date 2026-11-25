@@ -21,6 +21,8 @@ Baby kommt im Juni 2027. Sprache der App: Deutsch, verspielt mit Mäuse-Wortspie
 - Bei App-Änderungen `VERSION` in `app/sw.js` UND `APP_VERSION` in `app/js/main.js` hochzählen (Version steht unten im Mauseloch – hilft beim Prüfen, ob ein Handy aktuell ist). SW holt eigene Dateien mit `cache:'no-cache'` (GitHub Pages cached 10 Min.) und lädt bei neuer Version einmal automatisch neu.
 - Lokal testen: `powershell -File .claude/serve.ps1 -Root app -Port 5180` → http://localhost:5180
 - Kein Git installiert; Nutzer verwendet GitHub Desktop.
+- Haushalts-App und Kraftkladde werden in getrennten Sessions im selben Repo gebaut → vor neuer Arbeit in GitHub Desktop „Fetch/Pull origin“; jede Session fasst nur ihren Bereich an (`app/` ohne `kraft/` bzw. `app/kraft/`). Versionskonflikte (v-Nummern) beim Merge: höhere Nummer +1 für beide Stellen.
+- Android-Share-Target der Haushalts-App: `share_target.action` = `./index.html` (muss im `scope` liegen).
 
 ## Technik-Entscheidungen
 - PWA (eine Codebasis für Android + iOS, Push ab iOS 16.4 bei Home-Bildschirm-Installation).
