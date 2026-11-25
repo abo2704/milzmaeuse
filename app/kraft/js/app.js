@@ -5,6 +5,7 @@ import { KNOWLEDGE, recommendation, SCIENCE_NOTE } from './knowledge.js';
 import { METRICS, metricByKey, fmtMetric, exerciseSeries, computeRecords, bestOf, isBetter, workoutStats, setMetricFilter, metricAllowed } from './stats.js';
 import { lineChart, mountChart } from './chart.js';
 import { DEFAULT_PLAN, buildSchedule, current as tCurrent, planSummary } from './timer.js';
+import { SOURCES, MAIN_HEAVY_NOTE, heavyPhase, rangeFor, restFor, suggest, weekMuscleSets, strengthPerWeek, coreCheck, recentRun, FOOT_SWAP, COMPLAINTS, KNEE_WALL_TARGET } from './coach.js';
 import { parseGymRun, buildImport } from './import.js';
 import { RANGES, rangeStart, summary, buckets, strengthIndex, topGains, setLoad, stackedBarsSVG, indexLineSVG, patternBarsHTML, balanceHTML, bodyMapHTML, balanceInsights, insightsHTML, mountTips } from './progress.js';
 import {
@@ -12,13 +13,14 @@ import {
   fmtClock, monthLabel, weekStart, daysAgo, relDay, pick,
 } from './util.js';
 
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';
 let D = load();
 save(); // Startdaten bzw. nachgezogene Übungen sofort sichern
 let tab = 'train';
 let exFilter = { q: '', group: '' };
 let installEvt = null;
 let progRange = 'm3';
+let pendingFoot = null; // Fuß-Status aus dem Start-Dialog
 
 // ---------- Texte ----------
 const CHEERS = [
@@ -236,6 +238,7 @@ function homeHTML() {
         </div>
       </div>`).join('') : '<p class="muted small">Leg dir Routinen an, dann startest du mit einem Tipp.</p>'}
   </section>
+  ${coachHomeHTML()}
   <section>
     <div class="sec-head"><h2>Letzte 16 Wochen</h2><button class="link" data-act="tab" data-tab="history">Chronik</button></div>
     ${heatmapHTML()}
@@ -263,6 +266,151 @@ function heatmapHTML() {
 }
 const legendHTML = () => `<div class="legend">${Object.entries(KINDS).map(([k, v]) => `<span><i class="kdot k-${k}"></i>${v.label}</span>`).join('')}</div>`;
 
+// ---------- Coach ----------
+const DAYMS = 86400000;
+const srcHTML = (...keys) => `<div class="srcs">${keys.map(k => SOURCES[k]).filter(Boolean).map(x => `<a class="src" href="${x.url}" target="_blank" rel="noopener">Prinzip: ${esc(x.label)} · ${esc(x.by)} ↗</a>`).join('')}</div>`;
+function coachWeight(w, ex) {
+  if (ex.equip === 'kg') return w > 0 ? `+${fmtKg(w)}` : 'Körpergewicht';
+  const bar = barOf(ex);
+  return bar ? `${fmtKg(w)} (${fmtNum(Math.max(0, w - bar))} kg Scheiben)` : fmtKg(w);
+}
+function coachText(sg, ex) {
+  switch (sg.type) {
+    case 'up': return sg.band ? `Stärkeres Band · ${sg.target} Wdh. ↑` : `${coachWeight(sg.w, ex)} × ${sg.target} ↑`;
+    case 'anchor': return `${coachWeight(sg.w, ex)} × ${sg.target} Wdh.`;
+    case 'hold': return `${coachWeight(sg.w, ex)} halten · ${sg.target}`;
+    case 'harder': return 'Schwerere Variante oder Zusatzgewicht';
+    default: return `${coachWeight(sg.w, ex)} × ${sg.target}`;
+  }
+}
+function coachLineHTML(ex, prev) {
+  const A = D.active;
+  if (A.timer || A.timerPlan) return '';
+  const sg = suggest(ex, prev, D.settings);
+  if (!sg) return '';
+  return `<button class="coach-line t-${sg.type}" data-act="coach-why" data-id="${ex.id}"><span>🎯 Ziel: ${esc(coachText(sg, ex))}</span>${sg.range.heavy ? '<span class="heavy-tag">Schwere Phase</span>' : ''}<span class="ci">ⓘ</span></button>`;
+}
+// Übungen, die zuletzt gemacht wurden, mit Vorschlag
+function coachSuggestions(days = 56) {
+  const last = lastDoneMap(), out = [];
+  for (const ex of visibleExercises()) {
+    if (!last[ex.id] || last[ex.id] < Date.now() - days * DAYMS) continue;
+    const sg = suggest(ex, lastSetsFor(ex.id), D.settings);
+    if (sg) out.push({ ex, sg, date: last[ex.id] });
+  }
+  return out.sort((a, b) => (b.sg.type === 'up') - (a.sg.type === 'up') || b.date - a.date);
+}
+const mobilityDue = () => D.settings.coach.footCheck && (!D.mobility.length || D.mobility.at(-1).date < Date.now() - 21 * DAYMS);
+function heavyDue() {
+  const c = D.settings.coach;
+  if (heavyPhase(D.settings)) return false;
+  const recent = D.workouts.filter(w => w.start >= Date.now() - 56 * DAYMS && (w.kind || 'kraft') !== 'lauf' && w.entries?.length).length;
+  return recent >= 8 && (!c.lastHeavyEnd || c.lastHeavyEnd < Date.now() - 112 * DAYMS);
+}
+function coachHomeHTML() {
+  const hp = heavyPhase(D.settings), ups = coachSuggestions().filter(x => x.sg.type === 'up');
+  const rows = [];
+  if (hp) rows.push(`<b>Schwere Phase · Woche ${hp.week} von ${hp.weeks}</b><br><span class="muted small">4–6 Wdh. bei den Langhantel-Übungen, 3 Min. Pause</span>`);
+  if (ups.length) rows.push(`<b>${ups.length} ${ups.length === 1 ? 'Übung ist' : 'Übungen sind'} bereit für mehr Gewicht</b><br><span class="muted small">${esc(ups.slice(0, 3).map(x => x.ex.name).join(', '))}</span>`);
+  if (mobilityDue()) rows.push(`<b>Knie-zur-Wand-Test fällig</b><br><span class="muted small">Sprunggelenk: kurz messen, links und rechts</span>`);
+  if (!hp && heavyDue()) rows.push(`<b>Zeit für eine schwere Phase?</b><br><span class="muted small">4–6 Wochen schwer – gut für die Laufökonomie</span>`);
+  return `<section><div class="sec-head"><h2>Coach</h2><button class="link" data-act="coach-open">Alles ansehen</button></div>
+    <button class="card list coach-home" data-act="coach-open">${rows.length ? rows.map(r => `<div class="row"><span>${r}</span></div>`).join('') : '<div class="row"><span>Alles im grünen Bereich ✓<br><span class="muted small">Ziele für deine Übungen siehst du direkt im Training.</span></span></div>'}</button></section>`;
+}
+function coachBannerHTML() {
+  const A = D.active;
+  if (A.mode !== 'live') return '';
+  let out = '';
+  if (A.foot != null && A.foot > 5) {
+    const swappable = A.entries.filter(e => FOOT_SWAP[e.exId] && !e.sets.some(s => s.done) && D.exercises.some(x => x.id === FOOT_SWAP[e.exId]));
+    out += `<div class="card coach-banner warn"><b>Fuß meldet sich (${A.foot}/10)</b><p class="small">Schmerz-Ampel: Belastung ist okay, solange es während des Trainings nicht über 5/10 geht. Heute lieber schonender – Sprünge und Laufen ersetzen.</p>
+      ${swappable.length ? `<button class="btn small" data-act="foot-swap">${swappable.length} ${swappable.length === 1 ? 'Übung' : 'Übungen'} schonender tauschen</button>` : ''}${srcHTML('pain')}</div>`;
+  } else if (A.foot != null && A.foot >= 3) {
+    out += `<div class="card coach-banner"><b>Fuß ${A.foot}/10</b><p class="small">Okay – solange es beim Training nicht über 5/10 steigt. Sonst schonendere Varianten nehmen.</p>${srcHTML('pain')}</div>`;
+  }
+  const run = recentRun(D.workouts);
+  if (run && A.entries.some(e => ['Kniedominant', 'Hüftdominant'].includes(exById(e.exId).group))) {
+    out += `<div class="card coach-banner"><b>Lauf ${daysAgo(run.start) === 0 ? 'heute' : 'gestern'}${run.run?.km ? ' (' + fmtNum(run.run.km, 1) + ' km)' : ''}</b><p class="small">Bei den Beinübungen heute lieber 2–3 Wdh. in Reserve lassen – und schwere Beineinheiten nicht direkt vor harte Läufe legen.</p>${srcHTML('concurrent')}</div>`;
+  }
+  return out;
+}
+
+function openCoach() {
+  openLayer({ full: true, kind: 'coach', html: coachHTML, onClose: () => renderView() });
+}
+function coachHTML() {
+  const hp = heavyPhase(D.settings), c = D.settings.coach;
+  const sugg = coachSuggestions();
+  const vol = weekMuscleSets(D.workouts, exById);
+  const volMax = Math.max(20, ...Object.values(vol));
+  const spw = strengthPerWeek(D.workouts);
+  const cc = coreCheck(D.workouts, exById);
+  const mob = D.mobility, lastM = mob.at(-1);
+  const weeksBal = (() => { const ws = new Set(); for (const w of D.workouts) if (w.start >= Date.now() - 42 * DAYMS && (w.entries || []).some(e => exById(e.exId).group === 'Fuß & Reha' || ['einbeinstand', 'sl-rdl', 'short-foot', 'monster-walk', 'copenhagen'].includes(e.exId))) ws.add(weekStart(w.start).getTime()); return ws.size; })();
+  const feet = D.workouts.filter(w => w.foot != null).slice(-8);
+  const mBar = v => `<span class="mbar"><i style="width:${Math.min(100, v / 16 * 100)}%"></i><b style="left:${KNEE_WALL_TARGET / 16 * 100}%"></b></span>`;
+  return `<div class="page coach-page">
+    <div class="page-head"><button class="icon-btn" data-act="close-layer" aria-label="Zurück">${ICON.back}</button><h1>Coach</h1></div>
+    <p class="muted small">Hinweise nach Trainingsforschung und den Prinzipien von Dr. Aaron Horschig und Dr. Christopher Krupke (KRAFTWOHL) – in eigenen Worten, kein Ersatz für Arzt oder Physio.</p>
+
+    <section class="card"><h2>Schwere Phase</h2>
+      ${hp ? `<p><b>Woche ${hp.week} von ${hp.weeks}</b> · bis ${fmtDate(hp.end)}</p><p class="small muted">Langhantel-Übungen: 4–6 Wdh., 3 Min. Pause, 1–3 Wdh. in Reserve. Die Ziel-Gewichte im Training rechnet der Coach automatisch um.</p>
+        <button class="btn small ghost danger" data-act="heavy-stop">Phase beenden</button>`
+        : `<p class="small">Schwere Lasten (ab ca. 80 % des Maximalgewichts, also 4–6 Wdh.) verbessern die Laufökonomie am stärksten. Danach geht es wieder mit 8–12 Wdh. für den Muskelaufbau weiter.</p>
+        <p class="small muted">${MAIN_HEAVY_NOTE}${heavyDue() ? ' <b>Passt gerade gut.</b>' : ''}</p>
+        <div class="btn-row"><button class="btn small primary" data-act="heavy-start" data-w="4">4 Wochen starten</button><button class="btn small" data-act="heavy-start" data-w="6">6 Wochen starten</button></div>`}
+      ${srcHTML('heavy', 'runners')}</section>
+
+    <section class="card"><h2>Steigerung</h2>
+      <p class="small muted">Doppelte Progression: im Bereich Wiederholungen aufbauen, wenn alle Sätze oben angekommen sind, mehr Gewicht. 1–3 Wdh. in Reserve reichen – bis zum Versagen bringt kaum mehr.</p>
+      ${sugg.length ? `<div class="coach-list">${sugg.slice(0, 12).map(x => `<button class="row" data-act="ex-open" data-id="${x.ex.id}"><span><b>${esc(x.ex.name)}</b><br><span class="muted small">${esc(coachText(x.sg, x.ex))} · Bereich ${x.sg.range.lo}–${x.sg.range.hi}</span></span>${x.sg.type === 'up' ? '<span class="up">↑</span>' : ''}</button>`).join('')}</div>` : '<p class="muted small">Sobald du Übungen mit Gewicht und Wiederholungen einträgst, erscheinen hier deine Ziele.</p>'}
+      ${srcHTML('progression', 'rir', 'rest')}</section>
+
+    <section class="card"><h2>Wochenvolumen</h2>
+      <p class="small muted">Arbeitssätze je Muskel in den letzten 7 Tagen (Hauptmuskel 1, Hilfsmuskel ½). Richtwert für Muskelaufbau ca. 10 – als Läufer ist für viele Muskeln auch weniger völlig in Ordnung.</p>
+      <div class="hbars">${Object.keys(MUSCLES).map(k => [k, vol[k] || 0]).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+        `<div class="hbar"><span class="hbar-l">${MUSCLES[k]}</span><span class="hbar-t vt-t"><i style="width:${(v / volMax * 100).toFixed(1)}%"></i><b style="left:${(10 / volMax * 100).toFixed(1)}%"></b></span><span class="hbar-v">${fmtNum(v, 0)}</span></div>`).join('')}</div>
+      ${srcHTML('volume')}</section>
+
+    <section class="card"><h2>Laufen & Kraft</h2>
+      <p><b>Ø ${fmtNum(spw, 1)} Kraft-/Hybrid-Einheiten pro Woche</b> <span class="muted small">(letzte 4 Wochen)</span></p>
+      <p class="small muted">Für Läufer bringen 2–3 Krafteinheiten pro Woche den größten Nutzen. Schwere Beineinheiten nicht direkt vor Intervall- oder langen Läufen – besser nach lockeren Läufen oder an ruhigen Tagen.</p>
+      ${spw < 2 ? '<p class="small">Mehr als 1–2 Einheiten pro Woche wären ideal.</p>' : spw > 3.5 ? '<p class="small">Viel Kraft – achte auf Erholung für deine Läufe.</p>' : '<p class="small up">Genau im empfohlenen Bereich ✓</p>'}
+      ${srcHTML('runners', 'concurrent')}</section>
+
+    <section class="card"><h2>Sprunggelenk</h2>
+      <h4 class="coach-h">Knie-zur-Wand-Test</h4>
+      <p class="small muted">Barfuß, Fuß gerade vor die Wand. Wie weit (cm, große Zehe bis Wand) kannst du weg, sodass das Knie die Wand noch berührt – ohne dass die Ferse abhebt oder das Knie nach innen kippt? Ziel: ca. ${fmtNum(KNEE_WALL_TARGET, 1)} cm (5 Inch).</p>
+      ${lastM ? `<div class="mob-last"><div><span class="muted small">Links</span><b>${fmtNum(lastM.l, 1)} cm</b>${mBar(lastM.l)}</div><div><span class="muted small">Rechts</span><b>${fmtNum(lastM.r, 1)} cm</b>${mBar(lastM.r)}</div></div>
+        <p class="small">${Math.abs(lastM.l - lastM.r) >= 1.5 ? `Seitenunterschied ${fmtNum(Math.abs(lastM.l - lastM.r), 1)} cm – die ${lastM.l < lastM.r ? 'linke' : 'rechte'} Seite braucht mehr Beweglichkeit.` : 'Beide Seiten ähnlich ✓'} ${Math.min(lastM.l, lastM.r) >= KNEE_WALL_TARGET ? 'Zielwert erreicht ✓' : 'Mobilisation (Knie zur Wand) regelmäßig üben.'} <span class="muted">Zuletzt ${relDay(lastM.date)}.</span></p>` : ''}
+      <div class="two-col"><label class="field"><span>Links (cm)</span><input id="mob-l" inputmode="decimal" autocomplete="off" placeholder="z. B. 10,5"></label><label class="field"><span>Rechts (cm)</span><input id="mob-r" inputmode="decimal" autocomplete="off" placeholder="z. B. 12"></label></div>
+      <button class="btn small primary" data-act="mob-save">Messung speichern</button>
+      ${mob.length > 1 ? `<p class="small muted" style="margin-top:10px">Verlauf: ${mob.slice(-6).map(m => `${fmtShort(m.date)}: L ${fmtNum(m.l, 1)} / R ${fmtNum(m.r, 1)}`).join(' · ')}</p>` : ''}
+      <h4 class="coach-h">Gleichgewichtstraining</h4>
+      <p class="small"><b>${weeksBal} von 6 Wochen</b> mit Gleichgewichts- oder Fußtraining. Mindestens 6 Wochen am Stück senken das Risiko, erneut umzuknicken, deutlich.</p>
+      <h4 class="coach-h">Fuß-Status</h4>
+      <p class="small muted">${c.footCheck ? 'Beim Trainingsstart fragt die App nach dem Fuß (0–10). Über 5 schlägt der Coach schonendere Übungen vor.' : 'Fuß-Check ist aus (unter „Mehr“ einschaltbar).'}</p>
+      ${feet.length ? `<div class="chips">${feet.map(w => `<span class="chip ${w.foot > 5 ? 'gold' : ''}">${fmtShort(w.start)}: ${w.foot}</span>`).join('')}</div>` : ''}
+      ${srcHTML('kneewall', 'balance', 'pain')}</section>
+
+    <section class="card"><h2>Rumpf</h2>
+      ${cc.anti + cc.flex ? (cc.share > 0.4 && cc.flex >= 6
+        ? `<p class="small">Viele Beuge-/Drehübungen mit Last (z. B. Russian Twist, ${fmtNum(cc.share * 100, 0)} % deiner Core-Sätze). Für einen belastbaren Rücken eher Übungen nehmen, die Bewegung <b>verhindern</b>: Plank Pull-Through, Pallof Press, Seitstütz, Bird Dog, Käfer, Carries.</p>`
+        : `<p class="small">Überwiegend stabilisierende Rumpfübungen ✓ <span class="muted">(${cc.anti} von ${cc.anti + cc.flex} Sätzen in 4 Wochen)</span></p>`)
+        : '<p class="small muted">Noch keine Core-Sätze in den letzten 4 Wochen.</p>'}
+      ${srcHTML('core')}</section>
+
+    <section class="card"><h2>Etwas tut weh?</h2>
+      <p class="small muted">Die Ursache liegt oft nicht dort, wo es weh tut. Tippe die Stelle an – der Coach zeigt, welche Nachbargelenke du prüfen kannst.</p>
+      <div class="chips">${Object.entries(COMPLAINTS).map(([k, v]) => `<button class="chip big" data-act="complaint" data-k="${k}">${v.label}</button>`).join('')}</div>
+      ${srcHTML('joint', 'cause')}</section>
+
+    <section class="card"><h2>Quellen</h2>
+      <ul class="howto small">${Object.values(SOURCES).map(x => `<li><a href="${x.url}" target="_blank" rel="noopener">${esc(x.label)}</a> – ${esc(x.by)}</li>`).join('')}</ul>
+      <p class="muted small">Ausführlich mit Studien: docs/kraftkladde-coach-quellen.md im Projekt.</p></section>
+  </div>`;
+}
+
 // ---------- Laufendes Training ----------
 function supersetMembers(g) { return D.active.entries.map((e, i) => e.group === g ? i : -1).filter(i => i >= 0); }
 
@@ -283,7 +431,7 @@ function workoutHTML() {
     </div>
     <button class="btn primary" data-act="finish">${live ? 'Fertig' : 'Speichern'}</button>
   </header>
-  ${A.note ? `<p class="entry-note">${esc(A.note)}</p>` : ''}${timerCardHTML()}`;
+  ${A.note ? `<p class="entry-note">${esc(A.note)}</p>` : ''}${timerCardHTML()}${coachBannerHTML()}`;
 
   // Supersätze: aufeinanderfolgende Übungen mit gleicher Gruppe zusammenfassen
   let body = '', letter = 0, i = 0;
@@ -334,6 +482,7 @@ function entryHTML(en, i, ssTag = '') {
       <button class="icon-btn" data-act="entry-menu" data-e="${i}" aria-label="Übungs-Optionen">${ICON.dots}</button>
     </div>
     ${note ? `<p class="entry-note">${note}</p>` : ''}
+    ${coachLineHTML(ex, prev)}
     ${en.slotAlts && D.active.entries.findIndex(x => x.slotKey === en.slotKey) === i ? `<div class="alt-row"><span>${en.slotMulti ? 'Kombinieren' : 'Alternativen'}</span><div class="chips">${(nm => en.slotAlts.map((id, k) =>
       `<button class="chip ${D.active.entries.some(x => x.slotKey === en.slotKey && x.exId === id) ? 'on' : ''}" data-act="slot-alt" data-e="${i}" data-id="${id}">${esc(nm[k])}</button>`).join(''))(chipNames(en.slotAlts))}</div></div>` : ''}
     ${en.sets.length && !check ? `<div class="${cls} head" style="--n:${n}"><span>Satz</span>${showPrev ? '<span>Vorher</span>' : ''}${fields.map(f => `<span>${f === 'w' ? (barOf(ex) ? 'Scheiben' : weightCol(ex.equip)) : FIELDS[f].col}</span>`).join('')}<span></span></div>` : ''}
@@ -388,7 +537,8 @@ function startWorkout({ name = 'Training', entries = [], templateId = null, mode
   if (D.active) { toast('Es läuft schon ein Training.'); tab = 'train'; render(); return; }
   const start = mode === 'live' ? Date.now() : (() => { const d = new Date(); d.setHours(18, 0, 0, 0); return d.getTime(); })();
   location ||= D.settings.location || 'studio';
-  D.active = { id: uid(), name, start, mode, templateId, editOf: null, durationMin: 60, kind, location, note, entries, timerPlan: timerPlan ? structuredClone(timerPlan) : null, timer: null };
+  D.active = { id: uid(), name, start, mode, templateId, editOf: null, durationMin: 60, kind, location, note, entries, timerPlan: timerPlan ? structuredClone(timerPlan) : null, timer: null, foot: mode === 'live' ? pendingFoot : null };
+  pendingFoot = null;
   D.settings.location = location;
   save();
   tab = 'train';
@@ -424,7 +574,7 @@ function saveActive(includeUndone) {
   const w = {
     id: A.editOf || uid(),
     name: (A.name || '').trim() || 'Training',
-    kind: A.kind, location: A.location,
+    kind: A.kind, location: A.location, ...(A.foot != null ? { foot: A.foot } : {}),
     start: A.start,
     end: A.mode === 'live' ? Date.now() : A.start + (A.durationMin || 60) * 60000,
     templateId: A.templateId || null,
@@ -538,6 +688,7 @@ function tickTimer() {
   const pr = $('#tm-prog'); if (pr) pr.style.width = (c.el / sched.total * 100).toFixed(2) + '%';
   const mini = $('#tmini-text'); if (mini) mini.textContent = `⏱ ${PHASE[c.seg.type]} · ${c.seg.type === 'work' ? stationName(c.seg.id) : 'gleich ' + stationName(t.ids[c.seg.next])} · ${fmtTime(sec)}${t.pausedAt ? ' (Pause)' : ''}`;
 }
+function paintTimerOrCoach() { const l = layers.find(x => x.kind === 'coach'); if (l) paintLayer(l); }
 function paintTimer() { const l = layers.find(x => x.kind === 'timer'); if (l) paintLayer(l); }
 function openTimer() { openLayer({ full: true, kind: 'timer', html: timerHTML, onClose: () => renderView() }); }
 function timerHTML() {
@@ -779,6 +930,10 @@ function openSummary(w) {
       </div>
       ${recs.length ? `<h2>${recs.length === 1 ? 'Neuer Rekord' : recs.length + ' neue Rekorde'}</h2>
         <div class="card list">${recs.map(r => `<div class="row"><span><b>${esc(exById(r.exId).name)}</b><br><span class="muted small">${r.m.short}: <span class="up">${fmtMetric(r.m.kind, r.v)}</span> · vorher ${fmtMetric(r.m.kind, r.prev)}</span></span></div>`).join('')}</div>` : ''}
+      ${(() => {
+        const ups = w.entries.map(e => ({ ex: exById(e.exId), sg: suggest(exById(e.exId), { sets: e.sets, fields: e.fields }, D.settings) })).filter(x => x.sg?.type === 'up');
+        return ups.length ? `<h2>Nächstes Mal schwerer</h2><div class="card list">${ups.map(x => `<div class="row"><span><b>${esc(x.ex.name)}</b><br><span class="muted small">Bereich geschafft → ${esc(coachText(x.sg, x.ex))}</span></span><span class="up">↑</span></div>`).join('')}</div>` : '';
+      })()}
       <button class="btn primary wide big" data-act="close-layer">Weiter</button>
     </div>`,
   });
@@ -851,7 +1006,7 @@ function progressHTML() {
   const ins = balanceInsights(D.workouts, from, exById, load);
   const viz = (title, sub, body, extra = '') => `<section class="card viz"><h2>${title}</h2>${sub ? `<p class="muted small viz-sub">${sub}</p>` : ''}${extra}${body}<div class="viz-tip" role="status"></div></section>`;
   const pct = v => (v >= 0 ? '+' : '−') + fmtNum(Math.abs(v), 1) + ' %';
-  return `<header class="top"><h1>Fortschritt</h1></header>
+  return `<header class="top row-between"><h1>Fortschritt</h1><button class="btn small" data-act="coach-open">🎯 Coach</button></header>
     <div class="chips seg">${Object.entries(RANGES).map(([k, v]) => `<button class="chip ${progRange === k ? 'on' : ''}" data-act="prog-range" data-k="${k}">${v}</button>`).join('')}</div>
     <div class="tiles">
       <div class="tile"><strong>${sm.trainings}</strong><span>Trainings${sm.est ? ' (inkl. ' + sm.est + ' geschätzt)' : ''}</span></div>
@@ -1023,6 +1178,8 @@ function openStartSheet({ tpl = null } = {}) {
       <div class="chips">${Object.entries(LOC).map(([k, v]) => `<button class="chip big ${l.loc === k ? 'on' : ''}" data-act="ss-loc" data-k="${k}">${v}</button>`).join('')}</div>
       ${tpl ? (hasHome(tpl) ? `<p class="hint">${tplPreview(tpl, l.loc)}</p>` : '') : `<p class="muted small" style="margin-top:14px">Art</p>
         <div class="chips">${['kraft', 'hybrid'].map(k => `<button class="chip big ${l.k === k ? 'on' : ''}" data-act="ss-kind" data-k="${k}">${KINDS[k].label}</button>`).join('')}</div>`}
+      ${D.settings.coach.footCheck ? `<p class="muted small" style="margin-top:14px">Fuß/Sprunggelenk heute (0 = nichts, 10 = stark)</p>
+        <div class="chips foot-chips">${Array.from({ length: 11 }, (_, n) => `<button class="chip ${l.foot === n ? 'on' : ''} ${n > 5 ? 'hi' : ''}" data-act="ss-foot" data-n="${n}">${n}</button>`).join('')}</div>` : ''}
       <div class="btn-col"><button class="btn primary wide big" data-act="ss-go">Los geht's</button><button class="btn ghost wide" data-act="close-layer">Abbrechen</button></div></div>`,
   });
 }
@@ -1093,6 +1250,7 @@ function moreHTML() {
       </div>
       <label class="field"><span>Wochenziel (Kraft- & Hybrid-Einheiten)</span><select data-bind="set-goal">${[1, 2, 3, 4, 5].map(v => `<option value="${v}" ${v === (s.weeklyGoal || 2) ? 'selected' : ''}>${v}× pro Woche</option>`).join('')}</select></label>
       <label class="field"><span>Standard-Pause zwischen Sätzen</span><select data-bind="set-rest">${[0, 30, 45, 60, 75, 90, 120, 150, 180].map(v => `<option value="${v}" ${v === s.rest ? 'selected' : ''}>${v ? fmtTime(v) : 'Aus'}</option>`).join('')}</select></label>
+      <label class="field check-line"><input type="checkbox" data-bind="set-footcheck" ${s.coach.footCheck ? 'checked' : ''}><span>Fuß-Check beim Trainingsstart (Sprunggelenk 0–10)</span></label>
       <label class="field check-line"><input type="checkbox" data-bind="set-sound" ${s.sound ? 'checked' : ''}><span>Ton am Pausen-Ende</span></label>
       <label class="field check-line"><input type="checkbox" data-bind="set-vibrate" ${s.vibrate ? 'checked' : ''}><span>Vibration am Pausen-Ende</span></label>
       <label class="field check-line"><input type="checkbox" data-bind="set-wake" ${s.wakeLock ? 'checked' : ''}><span>Bildschirm während des Trainings anlassen</span></label>
@@ -1206,8 +1364,10 @@ const actions = {
   'tpl-start'(el) { openStartSheet({ tpl: D.templates.find(x => x.id === el.dataset.id) }); },
   'ss-loc'(el) { const l = topLayer(); l.loc = el.dataset.k; paintLayer(l); },
   'ss-kind'(el) { const l = topLayer(); l.k = el.dataset.k; paintLayer(l); },
+  'ss-foot'(el) { const l = topLayer(), n = +el.dataset.n; l.foot = l.foot === n ? null : n; paintLayer(l); },
   'ss-go'() {
     const l = topLayer();
+    pendingFoot = l.foot ?? null;
     closeLayer(() => l.tpl
       ? startWorkout({ name: l.tpl.name, templateId: l.tpl.id, kind: l.tpl.kind || 'kraft', location: l.loc, note: l.tpl.note || '', entries: entriesFromTemplate(l.tpl, l.loc), timerPlan: l.tpl.timer || null })
       : startWorkout({ kind: l.k, location: l.loc, name: l.k === 'hybrid' ? 'Hybrid-Training' : 'Training' }));
@@ -1255,7 +1415,7 @@ const actions = {
     const members = en.group ? supersetMembers(en.group) : [];
     const nextIdx = members.length > 1 ? members[members.indexOf(ei) + 1] : undefined;
     if (nextIdx === undefined && !D.active.timerPlan && !D.active.timer) {
-      const rests = (members.length > 1 ? members : [ei]).map(i => exById(D.active.entries[i].exId).rest ?? D.settings.rest);
+      const rests = (members.length > 1 ? members : [ei]).map(i => restFor(exById(D.active.entries[i].exId), D.settings));
       startRest(Math.max(...rests));
     }
     save(); renderView(); renderRestbar();
@@ -1387,6 +1547,49 @@ const actions = {
     if (!s) { const last = en.sets.at(-1); s = { warm: false, done: false }; if (last?.w != null) s.w = last.w; en.sets.push(s); }
     s.t = sec; save();
     closeLayer(() => { renderView(); toast(`${fmtTime(sec)} eingetragen`); });
+  },
+  'coach-open'() { openCoach(); },
+  'coach-why'(el) {
+    const ex = exById(el.dataset.id), sg = suggest(ex, lastSetsFor(ex.id, D.active?.editOf), D.settings);
+    if (!sg) return;
+    openLayer({ html: () => `<div class="sheet-body"><h2>${esc(ex.name)}</h2>
+      <p class="coach-target">🎯 ${esc(coachText(sg, ex))}</p>
+      <p class="small">${esc(sg.why)}</p>
+      <p class="small muted">Bereich ${sg.range.lo}–${sg.range.hi} Wdh.${sg.range.heavy ? ' (schwere Phase)' : ''} · 1–3 Wdh. in Reserve · Pause ca. ${fmtTime(restFor(ex, D.settings))} Min.</p>
+      ${srcHTML(sg.range.heavy ? 'heavy' : 'progression', 'rir', 'rest')}
+      <div class="btn-col"><button class="btn ghost wide" data-act="close-layer">Schließen</button></div></div>` });
+  },
+  'heavy-start'(el) { D.settings.coach.heavy = { start: Date.now(), weeks: +el.dataset.w }; save(); paintLayer(); toast(`Schwere Phase gestartet: ${el.dataset.w} Wochen`); },
+  'heavy-stop'() {
+    confirmSheet({ title: 'Schwere Phase beenden?', text: 'Danach gelten wieder 8–12 Wdh. für alle Übungen.', ok: 'Beenden', onOk: () => {
+      D.settings.coach.lastHeavyEnd = Date.now(); D.settings.coach.heavy = null; save(); paintTimerOrCoach();
+    } });
+  },
+  'mob-save'() {
+    const l = topLayer(), L = num(l.el.querySelector('#mob-l').value), R = num(l.el.querySelector('#mob-r').value);
+    if (L == null || R == null) { toast('Beide Seiten in cm eintragen'); return; }
+    D.mobility.push({ date: Date.now(), l: L, r: R }); save(); paintLayer(l); toast('Messung gespeichert ✓');
+  },
+  'complaint'(el) {
+    const c = COMPLAINTS[el.dataset.k];
+    openLayer({ html: () => `<div class="sheet-body"><h2>${esc(c.label)}</h2>
+      <p class="small muted">Nach dem Gelenk-für-Gelenk-Prinzip lohnt der Blick auf die Nachbarn:</p>
+      <ul class="howto small">${c.check.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+      <h4 class="coach-h">Passende Übungen</h4>
+      <div class="variants">${c.ex.filter(id => D.exercises.some(e => e.id === id)).map(id => `<button class="variant" data-act="ex-open" data-id="${id}"><small>${esc(exById(id).group)}</small>${esc(exById(id).name)}</button>`).join('')}</div>
+      <p class="small" style="margin-top:12px"><b>Bei starken, anhaltenden oder nach einem Sturz/Umknicken neuen Schmerzen: bitte ärztlich oder physiotherapeutisch abklären.</b></p>
+      ${srcHTML('joint', 'cause')}
+      <div class="btn-col"><button class="btn ghost wide" data-act="close-layer">Schließen</button></div></div>` });
+  },
+  'foot-swap'() {
+    const A = D.active; let n = 0;
+    for (const en of A.entries) {
+      const to = FOOT_SWAP[en.exId];
+      if (!to || en.sets.some(s => s.done) || !D.exercises.some(x => x.id === to)) continue;
+      const nx = exById(to), timed = A.timer || A.timerPlan;
+      en.exId = to; en.fields = sortFields(timed ? [...new Set([...nx.fields, 't'])] : nx.fields); en.sets = en.sets.map(s => ({ warm: s.warm, done: false })); n++;
+    }
+    save(); renderView(); toast(`${n} ${n === 1 ? 'Übung' : 'Übungen'} schonender getauscht`);
   },
   'tm-start'() { startTimer(); },
   'tm-open'() { openTimer(); },
@@ -1770,6 +1973,7 @@ function bind(t) {
     case 'set-bw': S.bodyweight = num(t.value); break;
     case 'set-rest': S.rest = +t.value; break;
     case 'set-goal': S.weeklyGoal = +t.value; break;
+    case 'set-footcheck': S.coach.footCheck = t.checked; break;
     case 'set-sound': S.sound = t.checked; if (t.checked) { unlockAudio(); beep(); } break;
     case 'set-vibrate': S.vibrate = t.checked; if (t.checked) navigator.vibrate?.(100); break;
     case 'set-wake': S.wakeLock = t.checked; syncWakeLock(); break;

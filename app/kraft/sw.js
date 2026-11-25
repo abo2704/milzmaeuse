@@ -1,9 +1,9 @@
 // Service Worker der Kraftkladde: hält die App offline bereit (im Gym gibt's oft kein Netz).
 // Bei jeder Änderung VERSION hier UND APP_VERSION in js/app.js hochzählen.
-const VERSION = 'kk-2.5.0';
+const VERSION = 'kk-2.6.0';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
-  'js/app.js', 'js/store.js', 'js/exercises.js', 'js/stats.js', 'js/chart.js', 'js/util.js', 'js/import.js', 'js/progress.js', 'js/knowledge.js', 'js/timer.js',
+  'js/app.js', 'js/store.js', 'js/exercises.js', 'js/stats.js', 'js/chart.js', 'js/util.js', 'js/import.js', 'js/progress.js', 'js/knowledge.js', 'js/timer.js', 'js/coach.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png',
 ];
 
