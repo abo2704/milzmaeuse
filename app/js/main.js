@@ -2,7 +2,7 @@ import { createDb, DEMO, TABLES } from './db.js';
 import { SEED, DISHES, CHAINS } from './seed.js';
 import { parseLine, checkAgainstStock, matchesStock, fmtQty, estimate, pregnancyWarnings, splitLines, findUrl } from './recipes.js';
 import { CATS, QUICK, monthly, contractStatus, statusTag, fmtDate, contractIcs, HELP, letter } from './contracts.js';
-import { PRAISE, PRAISE_BIG, PARTNER, OVERDUE, EMPTY, TOAST, AWAY, GOAL_REACHED, GOAL_REDEEMED, pick, daily, greeting, fill, levelOf, AISLES, guessAisle } from './texts.js';
+import { PRAISE, PRAISE_BIG, PRAISE_TEAM, PARTNER, PARTNER_TEAM, OVERDUE, EMPTY, TOAST, AWAY, GOAL_REACHED, GOAL_REDEEMED, pick, daily, greeting, fill, levelOf, AISLES, guessAisle } from './texts.js';
 const empty = (k, salt = '') => daily(EMPTY[k], k + salt); // Leertext: täglich wechselnd, flackert nicht
 
 /* ============ Helfer ============ */
@@ -133,6 +133,7 @@ function scheduleReload(t) {
   }, 120);
 }
 const seenThanks = new Set();
+let myTeamAt = 0; // Zeitpunkt des letzten eigenen Teamwork-Eintrags
 function onChange(t, p) {
   // Pinnwand: Pfoten und neue Ideen der anderen Maus kurz melden (Vergleich mit dem Stand vor dem Neuladen)
   if (t === 'ideas' && p?.new && S.me) {
@@ -145,10 +146,13 @@ function onChange(t, p) {
   scheduleReload(t);
   if (t !== 'task_log' || !p?.new) return;
   const l = p.new;
-  if (p.eventType === 'INSERT' && l.kind === 'task' && l.by_who !== S.me) {
+  // Teamwork: zwei Einträge kommen an; gemeldet wird nur der eigene Anteil ("+7 🧀 für dich")
+  // (ausgenommen die eigenen Einträge kurz nach eigenem Abhaken)
+  const teamMine = l.together && l.by_who === S.me && l.kind === 'task' && Date.now() - myTeamAt > 5000;
+  if (p.eventType === 'INSERT' && l.kind === 'task' && (teamMine || (l.by_who !== S.me && !l.together))) {
     const src = S.tasks.find(t => t.id === l.task_id), nx = src && nextTask(src);
     const mine = nx && (nx.assignee === S.me || nx.assignee === 'b');
-    showPush(fill(pick(PARTNER), l.task_name, NAME(l.by_who)) + (mine ? `\n👉 Jetzt bist du dran: „${nx.name}“${nx.after_days ? (nx.after_days === 1 ? ' (ab morgen)' : ` (in ${nx.after_days} Tagen)`) : ''}` : ''), l);
+    showPush((teamMine ? teamPush(l.task_name, NAME(other()), l.points) : fill(pick(PARTNER), l.task_name, NAME(l.by_who))) + (mine ? `\n👉 Jetzt bist du dran: „${nx.name}“${nx.after_days ? (nx.after_days === 1 ? ' (ab morgen)' : ` (in ${nx.after_days} Tagen)`) : ''}` : ''), teamMine ? null : l);
   }
   if (p.eventType === 'UPDATE' && l.thanked && l.by_who === S.me && !seenThanks.has(l.id)) {
     seenThanks.add(l.id);
@@ -322,7 +326,7 @@ function renderHeute() {
     return `<div class="d ${on ? '' : 'off'} ${ds === td ? 'today' : ''}"><svg style="color:${on ? 'var(--pink-strong)' : 'var(--mouse)'};transform:rotate(${i % 2 ? 12 : -12}deg)"><use href="#paw"/></svg><span>${d}</span></div>`;
   }).join('');
 
-  const due = openTasks().filter(t => t.due <= td && (t.assignee === S.me || t.assignee === 'b'));
+  const due = openTasks().filter(t => dueNow(t, td) && (t.assignee === S.me || t.assignee === 'b'));
   $('#due-cnt').textContent = due.length ? `${due.length} für dich` : '';
   $('#today-tasks').innerHTML = due.slice(0, 6).map(taskRow).join('') || `<p class="empty">${empty('today')}</p>`;
 
@@ -359,7 +363,7 @@ $('#week-done').onclick = () => {
       + days.map(d => {
         const dl = logs.filter(l => dayOf(l.done_at) === d);
         return `<div class="aisle row" style="justify-content:space-between">${d === today() ? 'Heute' : parseDay(d).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'short' })}<span style="color:var(--cheese-deep)">+${dl.reduce((a, l) => a + l.points, 0)} 🧀</span></div>`
-          + dl.map(l => `<div class="log"><span class="av ${l.by_who}">${l.by_who === 'p' ? 'P' : 'M'}</span><div class="t"><b>${l.kind === 'bonus' ? '💛 ' : ''}${esc(l.task_name)}</b></div><time>${time(l.done_at)}</time><span class="pts">+${l.points}</span></div>`).join('');
+          + dl.map(l => `<div class="log"><span class="av ${l.by_who}">${l.by_who === 'p' ? 'P' : 'M'}</span><div class="t"><b>${l.kind === 'bonus' ? '💛 ' : ''}${l.together ? '👫 ' : ''}${esc(l.task_name)}</b></div><time>${time(l.done_at)}</time><span class="pts">+${l.points}</span></div>`).join('');
       }).join('')
     : `<p class="empty">${empty('week')}</p>`;
   infoSheet('Erledigt diese Woche 🧀', html);
@@ -381,8 +385,13 @@ $('#v-heute').addEventListener('click', async e => {
 
 /* ---------- Aufgaben ---------- */
 const openTasks = () => S.tasks.filter(t => !t.done_at).sort((a, b) => a.due.localeCompare(b.due) || b.points - a.points);
-const repeatLabel = n => (!n ? 'einmalig' : n === 1 ? 'täglich' : n === 7 ? 'wöchentlich' : n === 14 ? 'alle 2 Wochen' : n === 30 ? 'monatlich' : `alle ${n} Tage`);
+const onDemand = t => t.repeat_days === 0; // "bei Bedarf": immer abhakbar, nie fällig/überfällig (z. B. 2. Wäsche-Ladung)
+const dueNow = (t, td) => t.due <= td && !onDemand(t);
+// Teamwork-Spalten gibt es erst nach supabase/005_*.sql
+const hasTogether = () => DEMO || S.tasks.some(t => 'together' in t);
+const repeatLabel = n => (n == null ? 'einmalig' : n === 0 ? 'bei Bedarf' : n === 1 ? 'täglich' : n === 7 ? 'wöchentlich' : n === 14 ? 'alle 2 Wochen' : n === 30 ? 'monatlich' : `alle ${n} Tage`);
 function dueLabel(t) {
+  if (onDemand(t)) return 'jederzeit';
   const d = daysBetween(today(), t.due);
   if (d < 0) return `<span style="color:var(--red)">überfällig seit ${-d} ${-d === 1 ? 'Tag' : 'Tagen'}</span>`;
   return d === 0 ? 'heute' : d === 1 ? 'morgen' : `in ${d} Tagen`;
@@ -397,8 +406,8 @@ function taskRow(t) {
   const waiting = t.chained && t.done_at;
   return `<div class="task ${waiting ? 'waiting' : ''}" data-task="${t.id}">
     ${waiting ? '<span class="check wait" aria-hidden="true">⏳</span>' : `<button class="check" aria-label="${esc(t.name)} erledigt">${tick}</button>`}
-    <div class="t"><b>${esc(t.name)}</b><small>${t.minutes} Min. · ${waiting ? 'wartet' : dueLabel(t)} · ${chainLabel(t)}${t.heavy ? ' · 💪' : ''}</small></div>
-    <span class="pts">+${t.points} 🧀</span><span class="av ${t.assignee}">${t.assignee === 'b' ? '' : t.assignee === 'p' ? 'P' : 'M'}</span>
+    <div class="t"><b>${esc(t.name)}</b><small>${t.minutes} Min. · ${waiting ? 'wartet' : dueLabel(t)} · ${chainLabel(t)}${t.heavy ? ' · 💪' : ''}${t.together ? ' · 👫 zu zweit' : ''}</small></div>
+    <span class="pts">+${t.points} 🧀</span><span class="av ${t.together ? 'z' : t.assignee}">${t.together ? '👫' : t.assignee === 'b' ? '' : t.assignee === 'p' ? 'P' : 'M'}</span>
     <button class="more" data-edit-task="${t.id}" aria-label="Bearbeiten">⋯</button></div>`;
 }
 let tFilter = 'due';
@@ -420,10 +429,13 @@ function renderTasks() {
   renderDayDetail();
 
   const list = openTasks().filter(t =>
-    tFilter === 'all' || (tFilter === 'due' && t.due <= td) || (tFilter === 'me' && (t.assignee === S.me || t.assignee === 'b')) || (tFilter === 'quick' && t.minutes <= 5));
-  const overdue = list.some(t => t.due < td);
+    tFilter === 'all' || (tFilter === 'due' && dueNow(t, td)) || (tFilter === 'me' && (t.assignee === S.me || t.assignee === 'b')) || (tFilter === 'quick' && t.minutes <= 5));
+  const overdue = list.some(t => t.due < td && !onDemand(t));
   const waiting = tFilter === 'all' ? S.tasks.filter(t => t.chained && t.done_at) : [];
+  // Bei-Bedarf-Aufgaben (z. B. 2. Wäsche-Ladung) unter "Fällig" unten griffbereit
+  const extra = tFilter === 'due' ? openTasks().filter(onDemand) : [];
   $('#tasks').innerHTML = (list.concat(waiting).map(taskRow).join('') || `<p class="empty">${tFilter === 'due' ? empty('tasks') : empty('none')}</p>`)
+    + (extra.length ? `<div class="aisle" style="padding:10px 14px 2px">Bei Bedarf · z. B. noch eine Ladung 🧺</div>` + extra.map(taskRow).join('') : '')
     + (overdue && tFilter === 'due' ? `<p class="small muted" style="padding:8px 4px">${pick(OVERDUE)}</p>` : '');
 }
 // Käse pro Tag: angetippter Tag zeigt, was erledigt wurde
@@ -434,7 +446,7 @@ function renderDayDetail() {
   const label = selDay === today() ? 'Heute' : parseDay(selDay).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'short' });
   const time = iso => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   $('#day-detail').innerHTML = `<h4>${label}<span>${total ? `+${total} 🧀` : ''}</span></h4>`
-    + (logs.map(l => `<div class="log"><span class="av ${l.by_who}">${l.by_who === 'p' ? 'P' : 'M'}</span><div class="t"><b>${l.kind === 'bonus' ? '💛 ' : ''}${esc(l.task_name)}</b></div><time>${time(l.done_at)}</time><span class="pts">+${l.points}</span></div>`).join('')
+    + (logs.map(l => `<div class="log"><span class="av ${l.by_who}">${l.by_who === 'p' ? 'P' : 'M'}</span><div class="t"><b>${l.kind === 'bonus' ? '💛 ' : ''}${l.together ? '👫 ' : ''}${esc(l.task_name)}</b></div><time>${time(l.done_at)}</time><span class="pts">+${l.points}</span></div>`).join('')
       || `<p class="empty">${selDay > today() ? empty('future', selDay) : empty('pastDay', selDay)}</p>`);
 }
 $('#week').addEventListener('click', e => {
@@ -458,38 +470,66 @@ async function completeTask(task, el) {
   const next = task.next_task_id && S.tasks.find(t => t.id === task.next_task_id);
   const prevNext = next && { due: next.due, done_at: next.done_at };
   await act(async () => {
-    const [log] = await db.insert('task_log', { task_id: task.id, task_name: task.name, points: task.points, by_who: S.me });
-    // Wiederkehrend → neu terminieren; einmalig oder Folgeaufgabe → ausblenden (Folgeaufgabe wartet auf den nächsten Durchlauf)
-    await db.update('tasks', task.id, task.repeat_days && !task.chained ? { due: addDays(today(), task.repeat_days) } : { done_at: new Date().toISOString() });
+    // Teamwork-Aufgabe: Käse wird geteilt (wer abhakt, bekommt bei ungerader Zahl den Krümel mehr)
+    const logs = task.together ? await logTogether(task) : await db.insert('task_log', { task_id: task.id, task_name: task.name, points: task.points, by_who: S.me });
+    // Wiederkehrend → neu terminieren; bei Bedarf → bleibt stehen; einmalig oder Folgeaufgabe → ausblenden (Folgeaufgabe wartet auf den nächsten Durchlauf)
+    if (!onDemand(task) || task.chained)
+      await db.update('tasks', task.id, task.repeat_days && !task.chained ? { due: addDays(today(), task.repeat_days) } : { done_at: new Date().toISOString() });
     if (next) await db.update('tasks', next.id, { done_at: null, due: addDays(today(), next.after_days || 0) });
-    lastDone = { task, prev, log, next, prevNext };
-    praise(task, log);
+    lastDone = { task, prev, logs, next, prevNext };
+    praise(task, logs);
     if (next) setTimeout(() => toast(`👉 Weiter geht's: „${next.name}“ ist jetzt bei ${next.assignee === 'b' ? 'euch beiden' : NAME(next.assignee)}${next.after_days ? ` (ab ${next.after_days === 1 ? 'morgen' : `in ${next.after_days} Tagen`})` : ''}`, DUR.important), 600);
   });
   scheduleReload('tasks'); scheduleReload('task_log');
 }
-function praise(task, log) {
-  const [emo, h, txt] = pick(task.points >= 20 ? PRAISE_BIG.concat(PRAISE) : PRAISE);
+// Käse aufteilen: 15 → 8 für mich, 7 für die andere Maus
+const splitPts = n => [Math.ceil(n / 2), Math.floor(n / 2)];
+const teamFlag = () => { myTeamAt = Date.now(); return hasTogether() ? { together: true } : {}; };
+async function logTogether(task) {
+  const [mine, theirs] = splitPts(task.points), base = { task_id: task.id, task_name: task.name, ...teamFlag() };
+  const [a] = await db.insert('task_log', { ...base, points: mine, by_who: S.me });
+  const [b] = await db.insert('task_log', { ...base, points: theirs, by_who: other() });
+  return [a, b];
+}
+function praise(task, logs) {
+  const team = logs.length > 1;
+  const [emo, h, txt] = team ? pick(PRAISE_TEAM) : pick(task.points >= 20 ? PRAISE_BIG.concat(PRAISE) : PRAISE);
   $('#pr-emo').textContent = emo; $('#pr-h').textContent = h;
-  $('#pr-t').textContent = fill(txt, task.name, NAME(S.me));
-  $('#pr-p').textContent = `+${task.points} 🧀 fürs Wochenziel`;
+  $('#pr-t').textContent = fill(txt, task.name, NAME(S.me)).replaceAll('{du}', NAME(other()));
+  $('#pr-p').textContent = team ? `+${logs[0].points} 🧀 für dich · +${logs[1].points} 🧀 für ${NAME(other())}` : `+${task.points} 🧀 fürs Wochenziel`;
+  $('#pr-pair').hidden = team || !lastDone || task.points < 2;
   const p = $('#praise'); p.classList.add('show');
   clearTimeout(prH); prH = setTimeout(() => p.classList.remove('show'), DUR.praise);
   if (DEMO) { // Vorschau, was die andere Maus sieht
     clearTimeout(puH);
     const nx = nextTask(task), forOther = nx && (nx.assignee === other() || nx.assignee === 'b');
-    puH = setTimeout(() => showPush(fill(pick(PARTNER), task.name, NAME(S.me)) + (forOther ? `\n👉 Jetzt bist du dran: „${nx.name}“` : ''), log, `So sieht's bei ${NAME(other())} aus`), 1500);
+    const text = team ? teamPush(task.name, NAME(S.me), logs[1].points) : fill(pick(PARTNER), task.name, NAME(S.me));
+    puH = setTimeout(() => showPush(text + (forOther ? `\n👉 Jetzt bist du dran: „${nx.name}“` : ''), team ? null : logs[0], `So sieht's bei ${NAME(other())} aus`), 1500);
   }
 }
+const teamPush = (t, who, pts) => fill(pick(PARTNER_TEAM), t, who).replaceAll('{p}', pts);
 $('#praise').addEventListener('click', async e => {
   if (e.target.closest('#pr-undo') && lastDone) {
-    const { task, prev, log, next, prevNext } = lastDone; lastDone = null;
+    const { task, prev, logs, next, prevNext } = lastDone; lastDone = null;
     $('#praise').classList.remove('show'); $('#push').classList.remove('show'); clearTimeout(puH);
     await act(async () => {
-      await db.remove('task_log', log.id); await db.update('tasks', task.id, prev);
+      for (const l of logs) await db.remove('task_log', l.id);
+      await db.update('tasks', task.id, prev);
       if (next) await db.update('tasks', next.id, prevNext);
     });
     toast(pick(TOAST.undo));
+    return;
+  }
+  // Nachträglich als Teamwork eintragen: eigener Eintrag wird halbiert, die andere Maus bekommt den Rest
+  if (e.target.closest('#pr-pair') && lastDone && lastDone.logs.length === 1) {
+    const { task } = lastDone, [mine] = lastDone.logs, [a, b] = splitPts(mine.points);
+    clearTimeout(puH); $('#push').classList.remove('show');
+    await act(async () => {
+      await db.update('task_log', mine.id, { points: a, ...teamFlag() });
+      const [l2] = await db.insert('task_log', { task_id: mine.task_id, task_name: mine.task_name, points: b, by_who: other(), ...teamFlag() });
+      lastDone.logs = [{ ...mine, points: a }, l2];
+      praise(task, lastDone.logs);
+    });
     return;
   }
   $('#praise').classList.remove('show');
@@ -498,6 +538,7 @@ $('#praise').addEventListener('click', async e => {
 let pushLog = null;
 function showPush(text, log, label) {
   pushLog = log;
+  $('#pu-thx').hidden = !log; // Teamwork-Meldung: kein Danke an sich selbst
   $('#pu-t').textContent = text;
   $('#pu-label').hidden = !label; $('#pu-label').textContent = label || '';
   $('#push').classList.add('show');
@@ -519,14 +560,16 @@ const TASK_FIELDS = [
   [{ k: 'points', label: 'Käse 🧀', type: 'select', num: true, options: [5, 10, 15, 20, 30, 50].map(n => [n, n + ' 🧀']), def: 10 },
    { k: 'minutes', label: 'Minuten', type: 'number', def: 10 }],
   [{ k: 'assignee', label: 'Wer?', type: 'select', options: [['b', 'Beide'], ['p', 'Püßmaus'], ['m', 'Müßmaus']], def: 'b' },
-   { k: 'repeat_days', label: 'Wiederholen', type: 'select', num: true, options: [['null', 'einmalig'], [1, 'täglich'], [2, 'alle 2 Tage'], [3, 'alle 3 Tage'], [4, 'alle 4 Tage'], [7, 'wöchentlich'], [14, 'alle 2 Wochen'], [30, 'monatlich']], def: 'null' }],
+   { k: 'repeat_days', label: 'Wiederholen', type: 'select', num: true, options: [['null', 'einmalig'], [0, 'bei Bedarf (nie überfällig)'], [1, 'täglich'], [2, 'alle 2 Tage'], [3, 'alle 3 Tage'], [4, 'alle 4 Tage'], [7, 'wöchentlich'], [14, 'alle 2 Wochen'], [30, 'monatlich']], def: 'null' }],
   { k: 'due', label: 'Nächstes Mal fällig', type: 'date' },
   { k: 'heavy', label: '💪 Schwer oder mit Putzchemie<small>Geht während der Schwangerschaft automatisch an Püßmaus</small>', type: 'checkbox' },
 ];
 // Formular inkl. Folgeaufgabe; t = bestehende Aufgabe (oder undefined bei neu)
 function taskFields(t) {
   const others = S.tasks.filter(x => x.id !== t?.id).sort((a, b) => a.name.localeCompare(b.name));
-  const f = [...TASK_FIELDS, { k: 'next_task_id', label: 'Danach folgt (optional)', type: 'select', options: [['null', '— nichts —'], ...others.map(x => [x.id, x.name])] }];
+  const f = [...TASK_FIELDS];
+  if (hasTogether()) f.push({ k: 'together', label: '👫 Machen wir zu zweit<small>Der Käse wird automatisch zwischen euch aufgeteilt</small>', type: 'checkbox' });
+  f.push({ k: 'next_task_id', label: 'Danach folgt (optional)', type: 'select', options: [['null', '— nichts —'], ...others.map(x => [x.id, x.name])] });
   if (t?.chained) f.push({ k: 'after_days', label: 'Fällig nach dem Vorgänger', type: 'select', num: true, options: [[0, 'sofort'], [1, '1 Tag später'], [2, '2 Tage später'], [3, '3 Tage später']] });
   return f;
 }
@@ -1004,7 +1047,7 @@ function cookRecipe(r, chk) {
       await db.update('recipes', r.id, { cooked_count: (r.cooked_count || 0) + 1, last_cooked: today() });
       const task = { name: `„${r.title}“ gekocht`, points: 15 };
       const [log] = await db.insert('task_log', { task_name: task.name, points: 15, by_who: S.me });
-      $('#sheet').close(); lastDone = null; praise(task, log);
+      $('#sheet').close(); lastDone = null; praise(task, [log]);
     } }]);
 }
 async function importFrom(url) {
@@ -1123,7 +1166,7 @@ function showView(v) {
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) showView(b.dataset.v); };
 
 /* ============ Los geht's ============ */
-const APP_VERSION = 'v10'; // gleich halten mit VERSION in sw.js
+const APP_VERSION = 'v11'; // gleich halten mit VERSION in sw.js
 $('.foot').textContent = `Die Milzmäuse ${APP_VERSION} · mausgezeichnet mit 🧀 gebaut`;
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // Kommt eine neue Version, einmal automatisch neu laden, damit alte und neue Dateien nicht gemischt laufen

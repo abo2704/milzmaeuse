@@ -97,6 +97,20 @@ export const PRAISE_BIG = [
   ['🌋', 'Ein Mammut-Mäusejob', '„{t}“ war eigentlich ein Job für zehn Mäuse. Du hast es allein gestemmt.'],
   ['🏛️', 'Ins Mäusemuseum damit', '„{t}“ wird als Meisterwerk ausgestellt. Eintritt: ein Stück Käse.'],
 ];
+// Teamwork-Aufgaben: {t} Aufgabe, {me} wer abgehakt hat, {du} die andere Maus
+export const PRAISE_TEAM = [
+  ['👫', 'Dream-Team im Mausbau', '„{t}“ zu zweit erledigt. Gemeinsam seid ihr einfach unschlagbar.'],
+  ['🧀', 'Geteilter Käse ist doppelter Käse', '„{t}“ als Team geschafft. Der Käse wird brüderlich und schwesterlich geteilt.'],
+  ['🐭', 'Zwei Mäuse, ein Ziel', '{me} und {du} haben „{t}“ im Gleichschritt erledigt. Pfote in Pfote!'],
+  ['🤝', 'Mausgezeichnete Zusammenarbeit', '„{t}“? Zu zweit ein Klacks. Teamwork makes the Mäuse work.'],
+  ['💞', 'Ein Herz und eine Maus', '„{t}“ erledigt. So harmonisch nagen nur echte Seelenmäuse.'],
+];
+// {t} Aufgabe, {me} wer abgehakt hat, {p} eigener Käse-Anteil
+export const PARTNER_TEAM = [
+  '👫 Teamwork! {me} hat „{t}“ für euch beide abgehakt. +{p} 🧀 für dich.',
+  '🧀 Käse geteilt: „{t}“ habt ihr zusammen erledigt. Dein Anteil: +{p} 🧀.',
+  '🤝 {me} hat euch als Dream-Team eingetragen: „{t}“ ✔️ +{p} 🧀 für dich.',
+];
 export const PARTNER = [
   'Kurze Info: Du wohnst mit einer absoluten Spitzenmaus zusammen. {me} hat gerade „{t}“ erledigt. 💛',
   '{me} hat „{t}“ erledigt. Eine Danke-Pfote wäre jetzt sehr angemessen. 🐾',
