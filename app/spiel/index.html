@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Und täglich grüßt der Löwe</title>
+  <meta name="description" content="Ein Zeitschleifen-Abenteuer in Braunschweig – im Browser, mit Tastatur, Controller oder Touch.">
+  <meta name="theme-color" content="#1b2430">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%81%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" style="display:none">
+    <div id="topbar">
+      <div id="clockBox"><div id="clock">11:55:00</div><div id="loopNo">Schleife 1</div></div>
+    </div>
+    <div id="left">
+      <div id="objective"></div>
+      <div id="courier"></div>
+      <div id="stars"></div>
+    </div>
+    <canvas id="mini" width="240" height="180" title="Erinnerungen öffnen"></canvas>
+    <div id="prompt" style="display:none"></div>
+    <div id="toast"></div>
+  </div>
+
+  <div id="dialog" class="hidden">
+    <div class="dlg-box">
+      <div class="dlg-name" id="dlgName"></div>
+      <div class="dlg-text" id="dlgText"></div>
+      <div class="dlg-extra" id="dlgExtra"></div>
+      <div class="dlg-hint" id="dlgHint"></div>
+    </div>
+  </div>
+
+  <div id="title">
+    <div class="title-box">
+      <div class="lion">🦁</div>
+      <h1>Und täglich grüßt der Löwe</h1>
+      <p class="sub">Ein Zeitschleifen-Abenteuer in Braunschweig</p>
+      <div class="btns">
+        <button id="btnContinue" class="big">Weiterspielen</button>
+        <button id="btnNew" class="big">Spiel starten</button>
+      </div>
+      <p id="titleInfo" class="info"></p>
+      <div class="howto">
+        <div><b>Tastatur</b> WASD/Pfeile · E Aktion · Leertaste Handbremse/Sprint · Tab Erinnerungen · Esc Menü</div>
+        <div><b>Controller</b> (z. B. PS4 per USB/Bluetooth) Stick lenken · R2 Gas · L2 Bremse · ✕ Aktion · □ Handbremse · △ Erinnerungen</div>
+      </div>
+      <p class="credits">Stadtplan frei nach Braunschweig – stark vereinfacht und nicht maßstabsgetreu. Alle Figuren sind ausgedacht. <span id="version"></span></p>
+    </div>
+  </div>
+
+  <div id="win" class="hidden">
+    <div class="title-box">
+      <div class="lion">🦁🎉</div>
+      <h1>Schleife gebrochen!</h1>
+      <p class="sub" id="winText"></p>
+      <div id="winStats" class="stats"></div>
+      <div class="btns">
+        <button id="winContinue" class="big">Frei weiterfahren</button>
+        <button id="winNew" class="big">Zum Titelbild</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="touch" class="hidden">
+    <div id="stick"><div id="knob"></div></div>
+    <div id="tButtons">
+      <button id="tMenu">☰</button>
+      <button id="tMem">💡</button>
+      <button id="tBrake">⇧</button>
+      <button id="tAct">✋</button>
+    </div>
+  </div>
+
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>

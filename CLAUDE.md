@@ -69,3 +69,13 @@ Bauplan: `docs/kraftkladde-steckbrief.md` (Stufe 1 fertig; nächste: Workout-Tim
 - Bei Änderungen `VERSION` in `app/kraft/sw.js` UND `APP_VERSION` in `app/kraft/js/app.js` hochzählen.
 - Der Service Worker der Haushalts-App ignoriert `/kraft/` und löscht nur `mm-`-Caches (Kraftkladde nutzt `kk-`).
 - Zwei installierbare Apps auf einer Domain: Manifeste mit fester `id` (`/milzmaeuse/` bzw. `/milzmaeuse/kraft/`); Haushalts-App hat `start_url`/`scope` = `./index.html`, damit `/kraft/` nicht in ihrem Bereich liegt (sonst ersetzt/übernimmt Android die App). Diese Werte nicht ändern.
+
+# Und täglich grüßt der Löwe – Braunschweig-Spiel (André)
+
+Browser-Spiel in `app/spiel/` → live unter https://abo2704.github.io/milzmaeuse/spiel/ (wird mit `app/` veröffentlicht). PC (Tastatur oder PS4-Controller per Gamepad-API) und Handy (Touch-Joystick).
+- Top-down, Canvas 2D, Vanilla-JS-Module, kein Service Worker (Haushalts-SW reicht `/spiel/` netz-zuerst durch). Spielstand in localStorage `bs-loewe-v1`.
+- Idee: 5-Minuten-Zeitschleife (11:55–12:00, Start Hauptbahnhof), Erinnerungen bleiben. Kette: Blitz → Till Eulenspiegel (Bäckerklint) → Lieferwagen 11:56 ab Burgplatz 3× rammen (sonst verschwindet er in PTB Tor 2 = Hinweis) → Zettel → Gauß-Denkmal (1+…+100 = 5050) → PTB-Code + Atomuhr-Minispiel → Kalle Klau ab 11:58:30 am Burglöwen zu Fuß fangen (in derselben Schleife).
+- Nebenbei: Okerkurier-Pakete, Ordnungsamt (Rasen in Fußgängerzone/Autos „ausleihen“ → Sterne, Belehrung −20 s), Straßenbahn auf dem Bohlweg, Tretboot auf der Okerumflut.
+- Dateien: `js/map.js` (Karte aus Kacheln, Wahrzeichen, Orte, Routen – frei nachgebaut, nicht maßstabsgetreu), `js/game.js` (Logik, Zeichnen, Dialoge), `js/story.js` (alle Texte), `js/input.js`, `js/audio.js` (Web Audio, keine Dateien).
+- Testhilfe: `window.__spiel` (loop, save, player, vehicles, thief, dlg, startFlash).
+- `APP_VERSION` in `app/spiel/js/game.js` bei Änderungen hochzählen.
