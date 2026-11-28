@@ -36,6 +36,7 @@ export const isMainLift = ex => ex.equip === 'lh';
 export function rangeFor(ex, settings) {
   if (!ex || !(ex.fields || []).includes('r')) return null;
   if (['Core', 'Fuß & Reha', 'Mobilität', 'Ausdauer', 'Ganzkörper & Hybrid'].includes(ex.group)) return null;
+  if (ex.range) return { lo: ex.range[0], hi: ex.range[1] }; // eigener Bereich, z. B. Curls im Finisher bis zur Erschöpfung
   if (heavyPhase(settings) && isMainLift(ex)) return { lo: 4, hi: 6, heavy: true };
   if (ex.equip === 'kb') return { lo: 8, hi: 15 };
   if (ex.group === 'Arme & Schultern') return { lo: 10, hi: 15 };
