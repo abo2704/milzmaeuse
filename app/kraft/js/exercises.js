@@ -85,7 +85,7 @@ export const SEED_EXERCISES = [
   // Finisher-Bausteine: einzeln, damit jede Übung eigene kg und Wdh. hat
   E('kb-halo', 'Kettlebell Halo', 'Arme & Schultern', 'kb', WR, { perSide: true, note: 'Wdh. je Richtung (z. B. 8 links + 8 rechts → 8)' }),
   E('kb-pullover', 'Überzug im Stehen (Kettlebell)', 'Arme & Schultern', 'kb', WR),
-  E('kb-curl', 'Bizeps-Curls (Kettlebell)', 'Arme & Schultern', 'kb', WR, { note: 'Im Finisher bis zur Erschöpfung' }),
+  E('kb-curl', 'Bizeps-Curls (Kettlebell)', 'Arme & Schultern', 'kb', WR, { note: 'Im Finisher bis zur Erschöpfung – eigene Wdh.-Zahl (z. B. 30)', range: [15, 40] }),
   E('russian-twist', 'Russian Twist (Kettlebell)', 'Core', 'kb', WR, { note: 'Wdh. = Drehungen gesamt (links + rechts)' }),
   E('plank', 'Plank', 'Core', 'kg', ['w', 't']),
   E('seitstuetz', 'Seitstütz', 'Core', 'kg', ['t'], { perSide: true }),

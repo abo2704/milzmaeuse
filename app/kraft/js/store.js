@@ -45,10 +45,20 @@ export function load() {
     if (i < 0) { if (!d.removedSeedTpls.includes(t.id)) d.templates.push(structuredClone(t)); }
     else if (!d.templates[i].edited && (d.templates[i].v || 1) < (t.v || 1)) d.templates[i] = structuredClone(t); // unveränderte Start-Routine aktualisieren
   }
+  // Alter Kombi-Finisher in (auch selbst bearbeiteten) Routinen → drei Einzelübungen mit je eigenen kg/Wdh.
+  for (const t of d.templates) {
+    const i = (t.items || []).findIndex(it => it.studio === 'kb-finisher' || it.home === 'kb-finisher');
+    if (i < 0) continue;
+    const sets = t.items[i].sets || 1;
+    t.items.splice(i, 1,
+      { slot: 'Finisher: Halo', studio: 'kb-halo', home: 'kb-halo', sets, link: true },
+      { slot: 'Finisher: Überzug', studio: 'kb-pullover', home: 'kb-pullover', sets, link: true },
+      { slot: 'Finisher: Curls', studio: 'kb-curl', home: 'kb-curl', sets, link: !!t.items[i].link });
+  }
   for (const e of d.exercises) {
     const s = SEED_EXERCISES.find(x => x.id === e.id);
     if (s) {
-      e.aliases = s.aliases; e.importHalve = s.importHalve; e.importBodyweight = s.importBodyweight;
+      e.aliases = s.aliases; e.importHalve = s.importHalve; e.importBodyweight = s.importBodyweight; e.range = s.range;
       if (!e.edited) { e.name = s.name; e.note = s.note; if (e.bar == null && s.bar) e.bar = s.bar; } // nicht selbst bearbeitete Start-Übungen aktuell halten
     }
     e.equip ||= 'sonst';
